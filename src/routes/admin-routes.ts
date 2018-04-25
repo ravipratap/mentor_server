@@ -1,0 +1,384 @@
+import * as express from "express";
+const router = express.Router();
+import * as passport from "passport";
+import * as async from "async";
+
+import { default as User, UserModel, Roles } from "../models/user-model";
+import { default as Site, SiteModel } from "../models/site-model";
+import { default as Program, ProgramModel } from "../models/program-model";
+import * as Authenticate  from "../helpers/authenticate";
+import * as AdminServices  from "../helpers/adminServices";
+import { Error } from "mongoose";
+import * as url from "url";
+import Survey, { SurveyModel, SurveyCategory } from "../models/survey-model";
+
+//Handling multipart form data, file uploads
+import * as multer from "multer";
+import { ImgStore } from "../models/shared-model";
+import { ImageModel, ImgType } from "../models/image-model";
+import { JSONunflatten } from "../helpers/utilities";
+const UPLOAD_PATH = 'uploads';
+var storage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        cb(null, UPLOAD_PATH)
+    },
+    filename: function (req, file, cb) {
+        cb(null, file.fieldname + '-' + Date.now())
+    }
+});
+const upload = multer({ storage: storage });
+
+const logger = require("../config/logger").logger;
+
+router.get("/config",
+    (req, res, next) => {
+        Site.getSiteByEmailOrDomain(undefined, Authenticate.extractHostname(req.headers.origin + ""), (err: Error, existingSite: SiteModel) => {
+            if ( err ) {
+                logger.error("error in retreiving site: ", err);
+                return next(err);
+             }
+             logger.debug("site found for signup: ", existingSite?existingSite.toString():existingSite);
+             return res.json({
+                success: true,
+                config:  Authenticate.getSiteConfig(undefined, existingSite)
+            });
+        });
+});
+
+
+
+router.post("/theme", 
+    passport.authenticate("jwt", {session: false}),
+    Authenticate.roleAuthorization([Roles.find((element) => element == "SuperAdmin"), Roles.find((element) => element == "SiteAdmin")]),
+    (req, res, next) => {
+
+        const user= req.user;
+        let siteId = req.body.siteId;
+        const theme = req.body.theme;
+        if(user.role == "SiteAdmin" || !siteId) {
+            siteId = user.site;
+        }
+        // logger.debug("site: "+ siteId + " theme "+ theme);
+        Site.findByIdAndUpdate(siteId, { $set: { "config.theme" : theme } } , { select: "profile config", new: true }, (err: Error, savedSite: SiteModel) => {
+            if ( err ) {
+                logger.error("error in saving site: ", err);
+                return next(err);
+            }
+            logger.debug("site: ", savedSite?savedSite.toString():savedSite);
+            return res.json({
+                success: true,
+                config: Authenticate.getSiteConfig(undefined, savedSite)
+            }); 
+        });
+});
+
+router.get("/sites", 
+    passport.authenticate("jwt", {session: false}),
+    Authenticate.roleAuthorization([Roles.find((element) => element == "SuperAdmin")]),
+    (req, res, next) => {
+
+        const parsedUrl = url.parse(req.url, true); // true to get query as object
+        const params = parsedUrl.query;
+        const pageSize = 9;
+        let skip = 0;
+        let query: any = {};
+        skip= (<number>params.page) * pageSize;
+        if(params.search) {
+            query["profile.company"]={ $regex : new RegExp("^" + params.search.toLowerCase(), "i") } 
+        }
+        // logger.debug("params: ", JSON.stringify(params));
+        // logger.debug("query: ", query);
+
+        Site.find(query,"profile license config",{ sort: { "createdAt" : -1 }, limit: pageSize, skip: skip }, (err: Error, sites: SiteModel[]) => {
+            if ( err ) {
+                logger.error("error in retreiving site: ", err);
+                return next(err);
+            }
+            logger.debug("sites found for response: ", sites?sites.toString() : undefined);
+            res.json({sites : sites});
+        });    
+});
+
+
+
+router.post("/saveSite", 
+    passport.authenticate("jwt", {session: false}),
+    Authenticate.roleAuthorization([Roles.find((element) => element == "SuperAdmin")]),
+    (req, res, next) => {
+        let site = <SiteModel>req.body;
+        if(site._id){
+            Site.findByIdAndUpdate(site._id,site, {select: "profile  license", new: true}, (err: Error, savedSite: SiteModel) => {
+                if ( err ) {
+                    logger.error("error in saving site: ", err);
+                    return next(err);
+                }
+                logger.debug("site: " + JSON.stringify(savedSite));
+                return res.json({
+                    success: true,
+                    site: savedSite
+                }); 
+            });
+        } else {
+            new Site(site).save((err: Error, savedSite: SiteModel) => {
+                if ( err ) {
+                    logger.error("error in saving site: ", err);
+                    return next(err);
+                }
+                logger.debug("site created for: ", site?site.toString():site," || saved: ",savedSite?savedSite.toString():savedSite);
+                return res.json({
+                    success: true,
+                    site: savedSite
+                }); 
+            });
+        }
+});
+
+router.get("/programs", 
+    passport.authenticate("jwt", {session: false}),
+    Authenticate.roleAuthorization([Roles.find((element) => element == "SuperAdmin"), Roles.find((element) => element == "SiteAdmin"), Roles.find((element) => element == "ProgramAdmin")]),
+    (req, res, next) => {
+        const parsedUrl = url.parse(req.url, true); // true to get query as object
+        const params = parsedUrl.query;
+        const pageSize = 9;
+        let skip = 0;
+        let siteId = params.siteId;
+        if(req.user.role != Roles.find((element) => element == "SuperAdmin") || !siteId) {
+            siteId = req.user.site;
+        }
+        let query: any = {site: siteId};
+        if(req.user.role == "ProgramAdmin") {
+            query["program_admins.id"] = req.user._id;
+        }
+        skip= (<number>params.page) * pageSize;
+        if(params.search) {
+            query["profile.name"]={ $regex : new RegExp("^" + params.search.toLowerCase(), "i") } 
+        }
+        logger.debug("params: ", JSON.stringify(params));
+        logger.debug("query: ", query);
+
+        Program.find(query,"site profile",{ sort: { "createdAt" : -1 }, limit: pageSize, skip: skip }, (err: Error, programs: ProgramModel[]) => {
+            if ( err ) {
+                logger.error("error in retreiving programs: ", err);
+                return next(err);
+            }
+            logger.debug("programs found for response: ", programs?programs.toString():programs);
+            res.json({programs : programs});
+        });    
+});
+
+
+router.post("/saveProgram", 
+    passport.authenticate("jwt", {session: false}),
+    upload.single('picture'),
+    Authenticate.roleAuthorization([Roles.find((element) => element == "SuperAdmin"), Roles.find((element) => element == "SiteAdmin"), Roles.find((element) => element == "ProgramAdmin")]),
+    (req, res, next) => {
+
+
+        let newImage: ImageModel;
+        let originalName: string;
+        if(req.file){
+            // logger.debug('req.picture.filename: '+ req.file.filename);
+            const fileNameFull= req.file.destination+'/'+req.file.filename;
+            // logger.debug('req.picture.filename: '+ fileNameFull);
+            newImage=<ImageModel>{};
+            newImage.img_path= fileNameFull;
+            originalName = req.file.originalname;
+            logger.debug("Uploaded File", newImage);
+        }
+        // logger.debug("body:", req.body);
+        let program = <ProgramModel>JSONunflatten(req.body);
+        logger.debug("program", program);
+        logger.debug("/||newImage", newImage, originalName );
+        async.waterfall([
+            async.constant(req.user, newImage, originalName, ImgType.find((element) => element == "program")),
+            Authenticate.uploadImage,
+            Authenticate.saveImage,
+            async.apply(AdminServices.updateProgram, req.user, program)
+        ],  (err, result:any) => {
+            if (err)
+            { 
+                res.json({success : false});; 
+            } else {
+                logger.debug("updateProgram result", result?result.toString():result);
+                res.json({
+                    success : true,
+                    program: result
+                });
+            }
+        }); 
+});
+
+
+router.get("/survey", 
+    passport.authenticate("jwt", {session: false}),
+    (req, res, next) => {
+        const parsedUrl = url.parse(req.url, true); // true to get query as object
+        const params = parsedUrl.query;
+        const pageSize = 9;
+        let skip = 0;
+        let siteId = params.site;
+        if(req.user.role != Roles.find((element) => element == "SuperAdmin")|| !siteId) {
+            siteId = req.user.site;
+        }
+        let query: any = {};
+        if(params.surveyId) {
+             query["_id"] = params.surveyId; 
+        } else {
+            // query["profile"] = {}
+            if(siteId) { query["profile.site"] = siteId; }
+            if(params.program) { query["profile.program"] = params.program; }
+            if(params.category) { query["profile.category"] = params.category; }
+            if(params.invite_code) { query["profile.invite_code"] = params.invite_code; }
+        }
+        logger.debug("params: ", JSON.stringify(params));
+        logger.debug("query: ", query);
+
+        Survey.findOne(query,"profile questions", (err: Error, survey: SurveyModel[]) => {
+            if ( err ) {
+                logger.error("error in retreiving programs: ", err);
+                return next(err);
+            }
+            logger.debug("survey found for response: ", survey?survey.toString():survey);
+            res.json({survey : survey});
+        });    
+});
+
+
+router.post("/saveSurvey", 
+    passport.authenticate("jwt", {session: false}),
+    (req, res, next) => {
+        let survey = <SurveyModel>req.body;
+        if(!survey.profile.site || req.user.role != Roles.find((element) => element == "SuperAdmin")){
+            survey.profile.site=req.user.site;
+        }
+        if(req.user.role == Roles.find((element) => element == "User") && (survey.profile.category == SurveyCategory.find((element) => element == "Signup") || survey.profile.category == SurveyCategory.find((element) => element == "PostSignup") || survey.profile.category == SurveyCategory.find((element) => element == "Program Review"))) {
+            return res.status(401); 
+        }
+        if(survey._id){
+            let query: any = { "_id" : survey._id }
+            logger.debug("query: ", query);
+            Survey.findOneAndUpdate(query, survey, {select: "questions profile", new: true}, (err: Error, savedSurvey: SurveyModel) => {
+                if ( err ) {
+                    logger.error("error in saving survey: ", err);
+                    return next(err);
+                }
+                logger.debug("survey: ", savedSurvey?savedSurvey.toString():savedSurvey);
+                return res.json({
+                    success: true,
+                    survey: savedSurvey
+                });
+            });
+        } else {
+            new Survey(survey).save((err: Error, savedSurvey: SurveyModel) => {
+                if ( err ) {
+                    logger.error("error in saving survey: ", err);
+                    return next(err);
+                }
+                logger.debug("survey created: ", survey?survey.toString():survey, savedSurvey?savedSurvey.toString():savedSurvey);
+                if(savedSurvey && savedSurvey.profile.is_default && (savedSurvey.profile.category == SurveyCategory.find( (element) => element == "Signup")|| savedSurvey.profile.category == SurveyCategory.find( (element) => element == "PostSignup"))) {
+                    let updateJson:any={};
+                    if(savedSurvey.profile.category == SurveyCategory.find( (element) => element == "Signup")){
+                        updateJson["config.signup_pre"] = savedSurvey._id;
+                    } else {
+                        updateJson["config.signup_post"] = savedSurvey._id;
+                    }
+                    logger.debug("updateJson", JSON.stringify(updateJson));
+                    Site.findByIdAndUpdate(survey.profile.site, updateJson,  { select: "profile config", new: true }, (errata: Error, savedSite: SiteModel) => {
+                        if ( errata ) {
+                            logger.error("error in saving site config for survey: ", errata);
+                            savedSurvey.remove((error: any, product:SurveyModel) => {
+                                if ( error ) {
+                                    logger.error("error in rolling back  survey save: ", error);
+                                }
+                                return next(error);
+                            })
+                        }
+                        logger.debug("site saved for survey", savedSite? savedSite.toString(): undefined);
+                        return res.json({
+                            success: true,
+                            survey: savedSurvey
+                        }); 
+                    });
+                } else {
+                    return res.json({
+                        success: true,
+                        survey: savedSurvey
+                    }); 
+                } 
+            });
+        }
+});
+
+
+router.get("/adminList", 
+    passport.authenticate("jwt", {session: false}),
+    Authenticate.roleAuthorization([Roles.find((element) => element == "SuperAdmin"), Roles.find((element) => element == "SiteAdmin"), Roles.find((element) => element == "ProgramAdmin")]),
+    (req, res, next) => {
+        const parsedUrl = url.parse(req.url, true); // true to get query as object
+        const params = parsedUrl.query;
+        let siteId = params.site;
+        if(req.user.role != Roles.find((element) => element == "SuperAdmin") || !siteId) {
+            siteId = req.user.site;
+        }
+        let programId = params.programId;
+        if(!programId && req.user.role == Roles.find((element) => element != "SuperAdmin")) {
+            return res.status(401); 
+        }
+        async.waterfall([
+            async.constant(req.user, programId, siteId),
+            AdminServices.getAdmins,
+            AdminServices.fillAdminDetails
+        ],  (err, result:any) => {
+            if (err)
+            { 
+                res.json({success : false});; 
+            } else {
+                // logger.debug("result.img.thumbnail", result.img.thumbnail, result.img);
+                res.json({
+                    success : true,
+                    users: result
+                });
+            }
+        }); 
+});
+
+
+router.post("/saveAdmins", 
+    passport.authenticate("jwt", {session: false}),
+    Authenticate.roleAuthorization([Roles.find((element) => element == "SuperAdmin"), Roles.find((element) => element == "SiteAdmin"), Roles.find((element) => element == "ProgramAdmin")]),
+    (req, res, next) => {
+        let siteId = req.body.site
+        if(req.user.role != Roles.find((element) => element == "SuperAdmin") || !siteId) {
+            siteId = req.user.site;
+        }
+        async.waterfall([
+            async.constant(req.user, req.body.programId, siteId),
+            AdminServices.getAdmins,
+            async.apply(AdminServices.addUserDetails, siteId, req.body.emails?req.body.emails:[], req.body.mobiles?req.body.mobiles:[]),
+            async.apply(AdminServices.keepExistingProgramAdmins, siteId),
+            AdminServices.setSiteAdmins,
+            AdminServices.setProgramAdmins,
+            AdminServices.resetAsUsers,
+            async.apply(AdminServices.setAllAdmins, siteId)
+        ],  (err, result:any) => {
+            if (err)
+            { 
+                res.json({success : false});; 
+            } else {
+                // logger.debug("result.img.thumbnail", result.img.thumbnail, result.img);
+                res.json({
+                    success : true,
+                    users: result
+                });
+            }
+        }); 
+});
+
+router.get("/transact1",
+    passport.authenticate("jwt", {session: false}),
+    Authenticate.recentlyLoggedIn(),
+    (req, res, next) => {
+    res.json({user : req.user});
+});
+
+export default router;
