@@ -52,7 +52,7 @@ mongoose.connect(mongoUrl, {useMongoClient: true}).then(
 });
 
 //Handinling Image upload
-const cloudinary = require('cloudinary');
+const cloudinary = require("cloudinary");
 cloudinary.config({ 
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME, 
   api_key: process.env.CLOUDINARY_API_KEY, 

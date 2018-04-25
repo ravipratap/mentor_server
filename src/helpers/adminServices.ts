@@ -1,8 +1,8 @@
 
 import { default as Program, ProgramModel } from "../models/program-model";
-import { Roles, ApplicationStatus} from "../models/user-model";
-import { ImageModel} from "../models/image-model";
-import {default as User, UserModel } from "../models/user-model";
+import { Roles, ApplicationStatus } from "../models/user-model";
+import { ImageModel } from "../models/image-model";
+import { default as User, UserModel } from "../models/user-model";
 import Site, { SiteModel } from "../models/site-model";
 import Survey, { SurveyModel, UserSurveyModel } from "../models/survey-model";
 import { SurveyResponseModel, UserBriefModel } from "../models/shared-model";
@@ -10,17 +10,17 @@ import * as MailService from "./mailService";
 import * as SmsService from "./smsService";
 const logger = require("../config/logger").logger;
 export let updateProgram = (user: any, program: ProgramModel, savedImage: ImageModel, done: Function) => {
-    if(!program.site || user.role != Roles.find((element) => element == "SuperAdmin")){
-        program.site=user.site;
+    if(!program.site || user.role != Roles.find((element) => element == "SuperAdmin")) {
+        program.site = user.site;
     }
-    if(savedImage){
+    if(savedImage) {
         program.profile.img_id = savedImage._id;
         program.profile.img_store = savedImage.store;
         program.profile.thumbnail = savedImage.thumbnail_path;
         program.profile.img_path = savedImage.img_path;
     }
     if(program._id){
-        let query: any = { "_id" : program._id }
+        const query: any = { "_id" : program._id };
         if(user.role == Roles.find((element) => element == "ProgramAdmin")) {
             query["program_admins.id"] = user._id;
         }
@@ -31,7 +31,7 @@ export let updateProgram = (user: any, program: ProgramModel, savedImage: ImageM
                 done(err);
             } else {
                 logger.debug("program: ", savedProgram?savedProgram.toString():savedProgram);
-                done(null, savedProgram);
+                done(undefined, savedProgram);
             }
         });
     } else {
@@ -44,7 +44,7 @@ export let updateProgram = (user: any, program: ProgramModel, savedImage: ImageM
                     done(err);
                 } else  {
                     logger.debug("program created: ",program?program.toString():program,  savedProgram?savedProgram.toString():savedProgram);
-                    done(null, savedProgram);
+                    done(undefined, savedProgram);
                 }
             });
         }
@@ -57,7 +57,7 @@ export let populateSignUpForm =  ( preSignup: boolean, existingSite: SiteModel, 
     let surveyResponse: SurveyResponseModel;
     let is_mentor = false;
     let userProgramId: string;
-    if(specificSurveyId) surveyId =specificSurveyId
+    if(specificSurveyId) surveyId =specificSurveyId;
     if(savedUser.programs && savedUser.programs.length > 0) {
         savedUser.programs.forEach( (programData) => {
             if(surveyId) {
@@ -65,10 +65,10 @@ export let populateSignUpForm =  ( preSignup: boolean, existingSite: SiteModel, 
                 if(programData.signup_post && programData.signup_post.survey == specificSurveyId) surveyResponse = programData.signup_post;
             } else {
                 if(preSignup && existingSite && programData.signup_pre && programData.signup_pre.answered  && programData.signup_pre.survey == existingSite.config.signup_pre){
-                    siteDefaultQuestionsNeeded = false
+                    siteDefaultQuestionsNeeded = false;
                 }
                 if(!preSignup && existingSite && programData.signup_post && programData.signup_post.answered  && programData.signup_post.survey == existingSite.config.signup_post){
-                    siteDefaultQuestionsNeeded = false
+                    siteDefaultQuestionsNeeded = false;
                 }
                 if((preSignup && programData.signup_pre && !programData.signup_pre.answered) || (!preSignup && programData.signup_post && !programData.signup_post.answered)){
                     surveyId = preSignup?programData.signup_pre.survey: programData.signup_post.survey;
@@ -84,7 +84,7 @@ export let populateSignUpForm =  ( preSignup: boolean, existingSite: SiteModel, 
     if(!specificSurveyId && existingSite && siteDefaultQuestionsNeeded){
         surveyId = preSignup?existingSite.config.signup_pre: existingSite.config.signup_post;
     }
-    let result : any = {user: savedUser, survey: undefined};
+    const result : any = {user: savedUser, survey: undefined};
     if(!surveyId){
         if(!savedUser.login.email_verified && savedUser.login.email_token && savedUser.login.email_token_expires > new Date()) {
             result.emailVerify = true;
@@ -94,7 +94,7 @@ export let populateSignUpForm =  ( preSignup: boolean, existingSite: SiteModel, 
             result.mobileVerify = true;
             SmsService.sendVerifySms(savedUser);
         }
-        done(null, result );
+        done(undefined, result );
     } else {
         Survey.findById(surveyId, "profile questions", (err: Error, survey: SurveyModel) => {
             if ( err ) {
@@ -114,7 +114,7 @@ export let populateSignUpForm =  ( preSignup: boolean, existingSite: SiteModel, 
                     }
                     logger.debug("survey found for response: ", JSON.stringify(newSurvey));
                 }
-                done(null, {user: savedUser, survey: newSurvey, surveyResponse: newSurveyResponse});
+                done(undefined, {user: savedUser, survey: newSurvey, surveyResponse: newSurveyResponse});
             }
         });    
     }
@@ -204,7 +204,7 @@ export let populateUserFromSignUpForm = (preSignup: boolean, is_mentor:boolean, 
                 img_store: savedImage.store,
                 thumbnail: savedImage.thumbnail_path,
                 img_path: savedImage.img_path
-            }
+            };
         }
         surveyResponse.answers.forEach((answer, answerIndex) => {
             logger.debug("answer: ", answer);
@@ -215,7 +215,7 @@ export let populateUserFromSignUpForm = (preSignup: boolean, is_mentor:boolean, 
                         break;
                     }
                     case "Current Location": {
-                        updateJson["profile.location.name"] = answer.answer.substr(0,answer.answer.lastIndexOf(','));;
+                        updateJson["profile.location.name"] = answer.answer.substr(0,answer.answer.lastIndexOf(','));
                         updateJson["profile.location.country.name"] = answer.answer.substr(answer.answer.lastIndexOf(',') + 2);
                         break;
                     }
@@ -248,7 +248,7 @@ export let populateUserFromSignUpForm = (preSignup: boolean, is_mentor:boolean, 
         });
 
         if(userProgramId){
-            searchQuery = {_id: userFromToken._id, "programs._id" : userProgramId}
+            searchQuery = {_id: userFromToken._id, "programs._id" : userProgramId};
             updateJson["programs.$.is_mentor"] = is_mentor;
             if(preSignup){
                 updateJson["programs.$.signup_pre"] = surveyResponse;
@@ -257,7 +257,7 @@ export let populateUserFromSignUpForm = (preSignup: boolean, is_mentor:boolean, 
             }
 
         } else {
-            searchQuery = {_id: userFromToken._id}
+            searchQuery = {_id: userFromToken._id};
             pushJson = { 
                 programs: {
                     program: programId,
@@ -286,7 +286,7 @@ export let populateUserFromSignUpForm = (preSignup: boolean, is_mentor:boolean, 
                     done(err);
                 } else {
                     logger.debug("updated existingUser",userProgramId,  savedUser?savedUser.toString():savedUser);
-                    done(null, savedUser);
+                    done(undefined, savedUser);
                 }
         });
         
@@ -309,7 +309,7 @@ export let getAdmins =  (userFromToken: any,  programId: string, siteId: string,
                     done({ status: "401"}); 
                  }
                  logger.debug("got admins of program", existingProgram?existingProgram.toString():existingProgram);
-                 done(null, existingProgram,  existingProgram.admins);
+                 done(undefined, existingProgram,  existingProgram.admins);
              }
          });
     } else {
@@ -323,7 +323,7 @@ export let getAdmins =  (userFromToken: any,  programId: string, siteId: string,
                     done({ status: "401"}); 
                  } else {
                     logger.debug("got admins of site", existingSite?existingSite.toString():existingSite);
-                    done(null, undefined, existingSite.admins);
+                    done(undefined, undefined, existingSite.admins);
                  }
             }
         });
@@ -337,7 +337,7 @@ export let fillAdminDetails =  (existingProgram: ProgramModel, admins: UserBrief
             done(err);
         } else {
             logger.debug("got admin Details", users?users.toString():users);
-            done(null, users);
+            done(undefined, users);
         }
     });
 };
@@ -384,11 +384,11 @@ export let addUserDetails =  (siteId: string, emails: string[], mobiles: string[
                         done(err);
                     } else {
                         logger.debug("newUsers", newUsers && newUsers.length > 0 ? newUsers.toString(): newUsers)
-                        done(null, setPossibleUsers, setProgramAdminUsers, setSiteAdminUsers, newUsers, existingUsers, existingProgram);
+                        done(undefined, setPossibleUsers, setProgramAdminUsers, setSiteAdminUsers, newUsers, existingUsers, existingProgram);
                     }  
                 });
             } else {
-                done(null, setPossibleUsers, setProgramAdminUsers, setSiteAdminUsers, undefined, existingUsers, existingProgram);
+                done(undefined, setPossibleUsers, setProgramAdminUsers, setSiteAdminUsers, undefined, existingUsers, existingProgram);
             }
         }
     });
@@ -426,7 +426,7 @@ export let keepExistingProgramAdmins =  (siteId: string, setPossibleUsers: UserM
                 }
             }
             logger.debug("setUsers updated from other programs", setPossibleUsers? setPossibleUsers.toString(): setPossibleUsers)
-            done(null, setPossibleUsers, setProgramAdminUsers, setSiteAdminUsers, newUsers, existingUsers, existingProgram);
+            done(undefined, setPossibleUsers, setProgramAdminUsers, setSiteAdminUsers, newUsers, existingUsers, existingProgram);
         }  
     });
     
@@ -440,11 +440,11 @@ export let setSiteAdmins =  (setUsers: UserModel[], setProgramAdminUsers: UserMo
                 done(err);
             } else {
                 logger.debug("newSiteAdminUsers done:", newSiteAdminUsers? newSiteAdminUsers.toString(): newSiteAdminUsers)
-                done(null, setUsers, setProgramAdminUsers, newSiteAdminUsers, newUsers, existingUsers, existingProgram);
+                done(undefined, setUsers, setProgramAdminUsers, newSiteAdminUsers, newUsers, existingUsers, existingProgram);
             }  
         });
     } else {
-        done(null, setUsers, setProgramAdminUsers, setSiteAdminUsers, newUsers, existingUsers, existingProgram);
+        done(undefined, setUsers, setProgramAdminUsers, setSiteAdminUsers, newUsers, existingUsers, existingProgram);
     }
 };
 
@@ -456,11 +456,11 @@ export let setProgramAdmins =  (setUsers: UserModel[], setProgramAdminUsers: Use
                 done(err);
             } else {
                 logger.debug("setProgramAdmins done:", raw)
-                done(null, setUsers, setProgramAdminUsers, setSiteAdminUsers, newUsers, existingUsers, existingProgram);
+                done(undefined, setUsers, setProgramAdminUsers, setSiteAdminUsers, newUsers, existingUsers, existingProgram);
             }  
         });
     } else {
-        done(null, setUsers, setProgramAdminUsers, setSiteAdminUsers, newUsers, existingUsers, existingProgram);
+        done(undefined, setUsers, setProgramAdminUsers, setSiteAdminUsers, newUsers, existingUsers, existingProgram);
     }
 };
 
@@ -472,11 +472,11 @@ export let resetAsUsers =  (setUsers: UserModel[], setProgramAdminUsers: UserMod
                 done(err);
             } else {
                 logger.debug("resetAsUsers ", raw)
-                done(null, setUsers, setProgramAdminUsers, setSiteAdminUsers, newUsers, existingUsers, existingProgram);
+                done(undefined, setUsers, setProgramAdminUsers, setSiteAdminUsers, newUsers, existingUsers, existingProgram);
             }  
         });
     } else {
-        done(null, setUsers, setProgramAdminUsers, setSiteAdminUsers, newUsers, existingUsers, existingProgram);
+        done(undefined, setUsers, setProgramAdminUsers, setSiteAdminUsers, newUsers, existingUsers, existingProgram);
     }
 };
 
@@ -512,7 +512,7 @@ export let setAllAdmins =  (siteId: string, setUsers: UserModel[], setProgramAdm
             } else {
                 MailService.notifyAdminsByMail(admins, undefined, setUsers, setProgramAdminUsers, setSiteAdminUsers, newUsers, existingUsers, savedProgram);
                 SmsService.notifyAdminsByMail(admins, undefined, setUsers, setProgramAdminUsers, setSiteAdminUsers, newUsers, existingUsers, savedProgram);
-                done(null, admins);
+                done(undefined, admins);
             } 
         });
     } else {
@@ -523,7 +523,7 @@ export let setAllAdmins =  (siteId: string, setUsers: UserModel[], setProgramAdm
             } else {
                 MailService.notifyAdminsByMail(admins, savedSite, setUsers, setProgramAdminUsers, setSiteAdminUsers, newUsers, existingUsers, existingProgram);
                 SmsService.notifyAdminsByMail(admins, savedSite, setUsers, setProgramAdminUsers, setSiteAdminUsers, newUsers, existingUsers, existingProgram);
-                done(null, admins);
+                done(undefined, admins);
             } 
         });
     }
