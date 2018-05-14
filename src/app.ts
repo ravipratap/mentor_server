@@ -44,7 +44,7 @@ app.use(morgan("short", {
 const mongoUrl = process.env.MONGODB_CONNECTION;
 logger.debug("mongoUrl " + mongoUrl);
 (<any>mongoose).Promise = bluebird;
-mongoose.connect(mongoUrl, {useMongoClient: true}).then(
+mongoose.connect(mongoUrl).then(
   () => { /** ready to use. The `mongoose.connect()` promise resolves to undefined. */ },
 ).catch(err => {
   console.log("MongoDB connection error. Please make sure MongoDB is running. " + err);

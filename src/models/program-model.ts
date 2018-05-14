@@ -8,7 +8,8 @@ export type ProgramModel = mongoose.Document & {
         name: string,
         invite_code: string,
         is_default: boolean,
-        goal: string, // Diversity Initiative, Knowledge Development, Work/Family Support, Leadership Development, Talent Retention, Job Training, New Employee Socialization, Succession Planning, Network Building, Corporate Understanding, Problem Solving, New work processes, career planning
+        category: string,
+        mentoring_goal: string, 
         desc: string,
         mentor_signup: Date,
         mentee_signup: Date,
@@ -39,7 +40,9 @@ export type ProgramModel = mongoose.Document & {
         order: number
     }]
   };
-export const ProgramGoal = [ "Career planning",  "Corporate Understanding", "Diversity Initiative",  "Job Training",  "Knowledge Development",  "Leadership Development",  "Network Building",  "New Employee Socialization",  "New work processes",  "Problem Solving",  "Succession Planning",  "Talent Retention",  "Work/Family Support"];
+
+export const ProgramCategory = [ "Mentoring",  "Kudos", "Employee pulse", "Peer Review", "Ideas",  "Advice from experts", "Performance Review"];
+export const MentoringGoal = [ "Career planning",  "Corporate Understanding", "Diversity Initiative",  "Job Training",  "Knowledge Development",  "Leadership Development",  "Network Building",  "New Employee Socialization",  "New work processes",  "Problem Solving",  "Succession Planning",  "Talent Retention",  "Work/Family Support"];
 // Program Schema
 const ProgramSchema = new mongoose.Schema({
     site: { type: mongoose.Schema.Types.ObjectId, required: true, index: true },
@@ -48,7 +51,8 @@ const ProgramSchema = new mongoose.Schema({
         name: String,
         invite_code: String,
         is_default: Boolean,
-        goal: { type: String, enum: ProgramGoal },
+        category: { type: String, enum: ProgramCategory },
+        mentoring_goal: { type: String, enum: MentoringGoal },
         desc: String,
         mentor_signup: Date,
         mentee_signup: Date,

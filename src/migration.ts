@@ -47,7 +47,8 @@ const createDefaultSite = ( done: Function ) => {
             type: SiteCategory.find( (element) => element == "Platform" )
         },
         config: {
-            theme: "theme-insta"
+            theme: "theme-insta",
+            mentor: true
         },
         license: {
             status: SiteStatus.find( (element) => element == "Active" ),

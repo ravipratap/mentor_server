@@ -33,7 +33,7 @@ export interface SurveyResponseModel extends mongoose.Document {
 }; 
 
 const options = { discriminatorKey : "kind"};
-export const QuestionCategory = ["Multiple", "Radio", "Yes/No",  "Star Rating", "NPS", "Text", "Number", "URL", "Email", "Telephone", "Current Location", "Location", "Skills", "ExpInYrs", "Job Level", "Function", "Industry", "Age", "Gender", "Role", "Background", "Photo", "Company", "Designation", "School", "Degree"];
+export const QuestionCategory = ["Multiple", "Radio", "Yes/No",  "Star Rating", "NPS", "Text", "Number", "URL", "Email", "Telephone", "Current Location", "Location", "Skills", "ExpInYrs", "Job Level", "Function", "Industry", "Age", "Gender", "Role", "Background", "Photo", "Company", "Designation", "School", "Degree", "Sign", "Contact", "Position", "Education"];
 export const SurveyResponseSchema = new mongoose.Schema({ 
     survey: mongoose.Schema.Types.ObjectId,
     is_mentor: Boolean,

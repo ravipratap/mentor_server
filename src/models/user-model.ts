@@ -4,6 +4,7 @@ import * as bcrypt from "bcrypt-nodejs";
 // import * as crypto from "crypto";
 import * as mongoose from "mongoose";
 import { UserBriefModel, SurveyResponseModel, ImgStore, SurveyResponseSchema, UserBriefSchema } from "./shared-model";
+import { SurveyModel } from "./survey-model";
 const logger = require("../config/logger").logger;
 const BCRYPT_SALT_LEN = 9;
 
@@ -33,7 +34,7 @@ export type UserModel = mongoose.Document & {
         email_token_expires: Date,
         mobile_otp: string,
         mobile_otp_expires: Date,
-        // unverified: [UnverifiedProfile],
+        unverified: any,
         facebook: string,
         google: string,
         linkedin: string,
@@ -60,7 +61,6 @@ export type UserModel = mongoose.Document & {
             max: Number
         },
         expInYrs?: number, //0 for student,
-        isStudent?: boolean,
         positions?: [{
             title: string,
             company: {
@@ -78,7 +78,7 @@ export type UserModel = mongoose.Document & {
                     name: string
                 }
             },
-            isCurrent: boolean,
+            is_current: boolean,
             startDate: {
                 month: number,
                 year: number
@@ -95,7 +95,8 @@ export type UserModel = mongoose.Document & {
                 premier: boolean
             },
             degree: string,
-            fieldsOfStudy: [string],
+            fieldOfStudy: string,
+            is_student?: boolean,
             startYear: number,
             endYear: number
         }],
@@ -236,7 +237,7 @@ const userSchema = new mongoose.Schema({
         email_token_expires: Date,
         mobile_otp: String,
         mobile_otp_expires: Date,
-        // unverified: Array,
+        unverified: mongoose.Schema.Types.Mixed,
         facebook: String,
         google: String,
         linkedin: String,
@@ -263,7 +264,6 @@ const userSchema = new mongoose.Schema({
             max: Number
         },
         expInYrs: Number,
-        isStudent: Boolean,
         positions: [{
             title: String,
             company: {
@@ -281,7 +281,7 @@ const userSchema = new mongoose.Schema({
                     name: String
                 }
             },
-            isCurrent: Boolean,
+            is_current: Boolean,
             startDate: {
                 month: Number,
                 year: Number
@@ -298,7 +298,8 @@ const userSchema = new mongoose.Schema({
                 premier: Boolean
             },
             degree: String,
-            fieldsOfStudy: [String],
+            fieldOfStudy: String,
+            is_student: Boolean,
             startYear: Number,
             endYear: Number
         }],
@@ -501,3 +502,23 @@ userSchema.statics.comparePassword = ( candidatePassword: string, hash: string, 
 };
 const User = mongoose.model< UserModel, IUserModel >("User", userSchema);
 export default User;
+
+export interface EditableSurveyData {
+    survey: SurveyModel;
+    surveyResponse?: SurveyResponseModel;
+}
+export interface ProfileAsSurveys {
+    _id: string,
+    site: string,
+    programs?: any,
+    logs?: any
+    pic?: any,
+    intro?: EditableSurveyData,
+    contact?: EditableSurveyData,
+    positions?:  EditableSurveyData,
+    addPosition?:  EditableSurveyData,
+    education?: EditableSurveyData,
+    addEducation?: EditableSurveyData,
+    personal_profile?: EditableSurveyData,
+    professional_profile?: EditableSurveyData,
+}

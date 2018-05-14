@@ -6,7 +6,7 @@ export type SurveyModel = mongoose.Document & {
         site: string,
         program: string,
         category: string,
-        is_default: boolean,
+        // is_default: boolean,
         invite_code: string,
         code_expires: Date,
         title: string,
@@ -27,6 +27,10 @@ export type SurveyModel = mongoose.Document & {
         choices: [{
             text: string,
             votes: [string],
+            comments: [{
+                text: string,
+                by: string
+            }],
             order: number
         }]
     }],
@@ -36,7 +40,7 @@ export type SurveyModel = mongoose.Document & {
 export type UserSurveyModel = SurveyModel & {
     userProgramId?: string
 }
-export const SurveyCategory = ["Interview", "Signup", "PostSignup", "Review", "Program Review", "Business Plan", "Poll"];
+export const SurveyCategory = ["Interview", "Signup", "PostSignup", "Review", "Program Review", "Business Plan", "Poll", "Profile"];
 export const ScheduleFrequency = ["Not Scheduled", "Monthly", "Introduction", "Call Completion", "Post Meeting", "Goal/Plan Update", "Completion"];
 // Survey Schema
 export const SurveySchema = new mongoose.Schema({ 
@@ -44,7 +48,7 @@ export const SurveySchema = new mongoose.Schema({
         site: mongoose.Schema.Types.ObjectId,
         program: mongoose.Schema.Types.ObjectId,
         category: { type: String, enum: SurveyCategory },
-        is_default: { type: Boolean, default: "false" },
+        // is_default: { type: Boolean, default: "false" },
         invite_code: String,
         code_expires: Date,
         title: String,
@@ -66,6 +70,10 @@ export const SurveySchema = new mongoose.Schema({
             _id: false,
             text: String,
             votes: [mongoose.Schema.Types.ObjectId],
+            comments: [{
+                text: String,
+                by: mongoose.Schema.Types.ObjectId
+            }],
             order: Number
         }]
     }],

@@ -10,9 +10,14 @@ export type SiteModel = mongoose.Document & {
         category: string
     },
     config: {
-      theme: string, // Job Level, Function, Gender, Cities, Skills
-      signup_pre?: string,
-      signup_post?: string,
+      theme: string,
+      mentor: boolean,
+      kudos: boolean,
+      idea: boolean,
+      pulse: boolean,
+      peer: boolean, //peer review
+      performance: boolean,
+      advice: boolean,
       jobLevels?: [string],
       genders?: [string],
       functions?: [string],
@@ -27,6 +32,14 @@ export type SiteModel = mongoose.Document & {
         plan: string,
         users: number
     },
+    signup_pre?: [{
+      program: string,
+      survey: string
+      }],
+    signup_post?: [{
+      program: string,
+      survey: string
+      }],
     admins: [UserBriefModel]
 
   };
@@ -56,8 +69,13 @@ const SiteSchema = new mongoose.Schema({
     },
     config: {
       theme: String,
-      signup_pre: String,
-      signup_post: String,
+      mentor: Boolean,
+      kudos: Boolean,
+      idea: Boolean,
+      pulse: Boolean,
+      peer: Boolean, 
+      performance: Boolean,
+      advice: Boolean,
       jobLevels: [String],
       genders: [String], 
       functions: [String],
@@ -72,6 +90,16 @@ const SiteSchema = new mongoose.Schema({
         plan:  { type: String, enum: SitePlans},
         users: Number
     },
+    signup_pre:  [{
+        _id: false,
+        program: mongoose.Schema.Types.ObjectId,
+        survey: mongoose.Schema.Types.ObjectId
+    }],
+    signup_post: [{
+        _id: false,
+        program: mongoose.Schema.Types.ObjectId,
+        survey: mongoose.Schema.Types.ObjectId
+    }],
     admins: [UserBriefSchema],
 }, {
     timestamps : true
@@ -91,7 +119,7 @@ SiteSchema.statics.getSiteByEmailOrDomain = (email: string, domain: string,  cal
         query = {"profile.email_domains": email};
     }
     console.log("getSiteByEmailOrDomain", email, domain);
-    Site.find(query, "profile config", ( err:Error, existingSites: SiteModel[] ) => {
+    Site.find(query, "profile config signup_pre signup_post", ( err:Error, existingSites: SiteModel[] ) => {
         if(err) {
             logger.error("Error in getting site", err);
             callback(err, undefined);
@@ -112,7 +140,7 @@ SiteSchema.statics.getSiteByEmailOrDomain = (email: string, domain: string,  cal
             callback(undefined, existingSite);
         } else {
             query = {"profile.category": "Platform"};
-            Site.findOne(query, "profile config", callback);
+            Site.findOne(query, "profile config signup_pre signup_post", callback);
         }
     });
 };

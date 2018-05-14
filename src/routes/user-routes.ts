@@ -15,8 +15,9 @@ import { Error } from "mongoose";
 import * as multer from "multer";
 import { ImgStore, SurveyResponseModel } from "../models/shared-model";
 import * as AdminServices  from  "../helpers/adminServices";
+import * as SurveyServices  from  "../helpers/surveyServices";
 import { SurveyModel, SurveyCategory } from "../models/survey-model";
-import { JSONunflatten } from "../helpers/utilities";
+import { JSONunflatten, convertUsertoString } from "../helpers/utilities";
 
 const UPLOAD_PATH = 'uploads';
 var storage = multer.diskStorage({
@@ -63,7 +64,7 @@ router.post("/signup", (req, res, next) => {
                     async.waterfall([
                         async.constant(<UserModel>req.body, existingUser, true, undefined),
                         Authenticate.updateProfile,
-                        async.apply(AdminServices.populateSignUpForm, true, existingSite, undefined) 
+                        async.apply(SurveyServices.populateSignUpForm, true, existingSite, undefined) 
                     ],  (err, result:any) => {
                         logger.debug("overwrite result", err, JSON.stringify(result));
                         if (err) { 
@@ -88,7 +89,7 @@ router.post("/signup", (req, res, next) => {
                     async.waterfall([
                         async.constant(<UserModel>req.body, existingSite, undefined),
                         Authenticate.createProfile,
-                        async.apply(AdminServices.populateSignUpForm, true, existingSite, undefined) 
+                        async.apply(SurveyServices.populateSignUpForm, true, existingSite, undefined) 
                     ],  (err, result:any) => {
                         logger.debug("create result", err, result?result.toString():result);
                         if (err){ 
@@ -160,7 +161,7 @@ router.post("/social", (req, res, next) => {
                         Authenticate.uploadImage,
                         Authenticate.saveImage,
                         async.apply(Authenticate.updateProfile, <UserModel>req.body, existingUser, false),
-                        async.apply(AdminServices.populateSignUpForm, true, existingSite, undefined) 
+                        async.apply(SurveyServices.populateSignUpForm, true, existingSite, undefined) 
                     ],  (err, result:any) => {
                         logger.debug("result", err, result?result.toString():result);
                         if (err) { 
@@ -194,7 +195,7 @@ router.post("/social", (req, res, next) => {
                         Authenticate.uploadImage,
                         Authenticate.saveImage,
                         async.apply(Authenticate.updateProfile, <UserModel>req.body, existingUser, true),
-                        async.apply(AdminServices.populateSignUpForm, true, existingSite, undefined) 
+                        async.apply(SurveyServices.populateSignUpForm, true, existingSite, undefined) 
                     ],  (err, result:any) => {
                         logger.debug("result", err, result?result.toString():result);
                         if (err) { 
@@ -228,7 +229,7 @@ router.post("/social", (req, res, next) => {
                         Authenticate.uploadImage,
                         Authenticate.saveImage,
                         async.apply(Authenticate.createProfile, <UserModel>req.body, existingSite),
-                        async.apply(AdminServices.populateSignUpForm, true, existingSite, undefined) 
+                        async.apply(SurveyServices.populateSignUpForm, true, existingSite, undefined) 
                     ],  (err, result:any) => {
                         logger.debug("result", err, result?result.toString():result);
                         if (err) { 
@@ -296,7 +297,7 @@ router.post("/signin", (req, res, next) => {
                         async.waterfall([
                             async.constant(user),
                             Authenticate.updateUserForSignIn,
-                            async.apply(AdminServices.populateSignUpForm, true, existingSite, undefined) 
+                            async.apply(SurveyServices.populateSignUpForm, true, existingSite, undefined) 
                         ],  (err, result:any) => {
                             logger.debug("overwrite result", err, result? JSON.stringify(result):result);
                             if (err) { 
@@ -324,7 +325,7 @@ router.post("/signin", (req, res, next) => {
                         //     config:  Authenticate.getSiteConfig(user, existingSite)
                         // });
                     } else { // For Site to be changed based on username(non domain) (Only to be used in app)
-                        Site.findById(user.site, "profile config",  (err: Error, newSite: SiteModel) => {
+                        Site.findById(user.site, "profile config  signup_pre signup_post",  (err: Error, newSite: SiteModel) => {
                             if ( err ) {
                                 logger.error("error in retreiving site: " , err);
                                 return next(err);
@@ -333,7 +334,7 @@ router.post("/signin", (req, res, next) => {
                             async.waterfall([
                                 async.constant(user),
                                 Authenticate.updateUserForSignIn,
-                                async.apply(AdminServices.populateSignUpForm, true, newSite, undefined) 
+                                async.apply(SurveyServices.populateSignUpForm, true, newSite, undefined) 
                             ],  (err, result:any) => {
                                 logger.debug("updateUserForSignIn result", err, result?result.toString():result);
                                 if (err) { 
@@ -377,48 +378,105 @@ router.post('/signUpForm', passport.authenticate('jwt', {session: false}), uploa
         // logger.debug("body:", req.body);
         let requestBody = JSONunflatten(req.body);
         const programId = requestBody.extra.program;
-        const preSignup: boolean = requestBody.extra.category == SurveyCategory.find((element) => element == "Signup");
+        const category =requestBody.extra.category;
         const is_mentor: boolean = requestBody.extra.is_mentor? true: false;
         const userProgramId = requestBody.extra.userProgramId;
-        logger.debug("requestBody.extra", requestBody.extra, programId, preSignup, is_mentor, userProgramId);
+        logger.debug("requestBody.extra", requestBody.extra, programId, category, is_mentor, userProgramId);
         delete requestBody.extra;
         let surveyResponse = <SurveyResponseModel> requestBody;
         logger.debug("surveyResponse", surveyResponse);
         logger.debug("/||newImage", newImage, originalName );
-        async.waterfall([
-            async.constant(req.user, newImage, originalName, ImgType.find((element) => element == "profile")),
-            Authenticate.uploadImage,
-            Authenticate.saveImage,
-            async.apply(AdminServices.populateUserFromSignUpForm, preSignup, is_mentor, userProgramId, programId, req.user, surveyResponse),
-            async.apply(AdminServices.populateSignUpForm, true, undefined, undefined) 
-        ],  (err, result:any) => {
-            if (err)
-            { 
-                res.json({success : false});; 
-            } else {
-                logger.debug("updateProgram result", result?result.toString():result);
-                res.json({
-                    success : true,
-                    survey: result.survey,
-                    surveyResponse: result.surveyResponse,
-                    emailVerify: result.emailVerify,
-                    mobileVerify: result.mobileVerify
+        if(category == SurveyCategory.find((element) => element == "Profile")){
+            async.waterfall([
+                async.constant(category, req.user, surveyResponse, undefined),
+                SurveyServices.populateContactFromSignUpForm,
+                async.apply(SurveyServices.populateUserFromSignUpForm, is_mentor, userProgramId, programId),
+                SurveyServices.updateEducationFromSignUpForm,
+                SurveyServices.updatePositionFromSignUpForm
+            ],  (err, result:any) => {
+                if (err)
+                { 
+                    res.json({success : false});; 
+                } else {
+                    logger.debug("updatePr0file result", convertUsertoString(result));
+                    let aid:string;
+                    let email_verified: boolean = result.login.email_verified;
+                    let mobile_verified: boolean = result.login.mobile_verified;
+                    if(surveyResponse.answers.length == 1 && (surveyResponse.answers[0].category=="Position" || surveyResponse.answers[0].category=="Education")){
+                        if(surveyResponse.answers[0].category=="Position"){
+                            aid = result.profile.positions[result.profile.positions.length - 1]._id
+                        } else {
+                            aid = result.profile.education[result.profile.education.length - 1]._id
+                        }
+                    }
+                    logger.debug("aid", JSON.stringify(aid));
+                    res.json({
+                        success : true,
+                        aid: aid,
+                        email_verified: email_verified,
+                        mobile_verified: mobile_verified
+                    });
+                }
+            });
+        } else {
+            Site.findById(req.user.site, "profile config  signup_pre signup_post",  (errata: Error, existingSite: SiteModel) => {
+                if ( errata ) {
+                    logger.error("error in retreiving site: " , errata);
+                    return next(errata);
+                }
+                async.waterfall([
+                    async.constant(req.user, newImage, originalName, ImgType.find((element) => element == "profile")),
+                    Authenticate.uploadImage,
+                    Authenticate.saveImage,
+                    async.apply(SurveyServices.populateContactFromSignUpForm, category, req.user, surveyResponse),
+                    async.apply(SurveyServices.populateUserFromSignUpForm, is_mentor, userProgramId, programId),
+                    SurveyServices.updateEducationFromSignUpForm,
+                    SurveyServices.updatePositionFromSignUpForm,
+                    async.apply(SurveyServices.populateSignUpForm, category == SurveyCategory.find((element) => element == "Signup"), existingSite, undefined) 
+                ],  (err, result:any) => {
+                    if (err)
+                    { 
+                        res.json({success : false});; 
+                    } else {
+                        logger.debug("updateProgram result", convertUsertoString(result));
+                        res.json({
+                            success : true,
+                            survey: result.survey,
+                            surveyResponse: result.surveyResponse,
+                            emailVerify: result.emailVerify,
+                            mobileVerify: result.mobileVerify
+                        });
+                    }
                 });
-            }
-        });   
+            });
+        }   
 });
 
 router.get("/profile", passport.authenticate("jwt", {session: false}), (req, res, next) => {
-    logger.debug("inside profile route");
+    const parsedUrl = url.parse(req.url, true); // true to get query as object
+    const params = parsedUrl.query;
+    let userId = params._id;
+    if(!userId) userId = req.user._id;
+    logger.debug("inside profile route", userId);
     logger.debug(req.user);
-    User.findById( req.user._id, "site login profile sign pic", ( err: Error, userFromDb: UserModel ) => {
-        if ( err ) throw err;
+    let fields: string;
+    let self:boolean = false;
+     if(req.user._id == userId) {
+        fields = "site login profile sign pic programs logs";
+        self = true;
+     } else  {
+        fields = "site login profile sign pic programs";
+     }
+
+    User.findById( userId, fields, ( err: Error, userFromDb: UserModel ) => {
+        if ( err ){
+            logger.error("error in retreiving user: " , err);
+            return next(err);
+        }
         if ( !userFromDb ) {
             return res.json({success: false, msg: "User not found"});
         }
         logger.debug(userFromDb?userFromDb.toString():userFromDb);
-
-        
         // const userForDisplay = {
         //     name: userFromDb.fullName,
         //     email: userFromDb.login.email,
@@ -431,7 +489,7 @@ router.get("/profile", passport.authenticate("jwt", {session: false}), (req, res
         //     thumbnail: userFromDb.sign.thumbnail,
         //     img_store: userFromDb.sign.img_store
         // };
-        res.json({user : userFromDb});
+        res.json({user : SurveyServices.getProfileAsSurvey(userFromDb, self)});
     });
 
 });
@@ -456,7 +514,8 @@ router.post('/profilePicture', passport.authenticate('jwt', {session: false}), u
                 res.json({
                     success : true,
                     secure_url: result.img.img_path,
-                    thumbnail: result.img.thumbnail_path
+                    thumbnail: result.img.thumbnail_path,
+                    img_store: result.user.pic.img_store
                 });
             }
         });

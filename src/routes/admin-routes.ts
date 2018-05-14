@@ -59,7 +59,7 @@ router.post("/theme",
             siteId = user.site;
         }
         // logger.debug("site: "+ siteId + " theme "+ theme);
-        Site.findByIdAndUpdate(siteId, { $set: { "config.theme" : theme } } , { select: "profile config", new: true }, (err: Error, savedSite: SiteModel) => {
+        Site.findByIdAndUpdate(siteId, { $set: { "config.theme" : theme } } , { select: "profile config signup_pre signup_post", new: true }, (err: Error, savedSite: SiteModel) => {
             if ( err ) {
                 logger.error("error in saving site: ", err);
                 return next(err);
@@ -106,8 +106,9 @@ router.post("/saveSite",
     Authenticate.roleAuthorization([Roles.find((element) => element == "SuperAdmin")]),
     (req, res, next) => {
         let site = <SiteModel>req.body;
+        logger.debug("site: ",site);
         if(site._id){
-            Site.findByIdAndUpdate(site._id,site, {select: "profile  license", new: true}, (err: Error, savedSite: SiteModel) => {
+            Site.findByIdAndUpdate(site._id,site, {select: "profile  license config", new: true}, (err: Error, savedSite: SiteModel) => {
                 if ( err ) {
                     logger.error("error in saving site: ", err);
                     return next(err);
@@ -186,14 +187,17 @@ router.post("/saveProgram",
             logger.debug("Uploaded File", newImage);
         }
         // logger.debug("body:", req.body);
-        let program = <ProgramModel>JSONunflatten(req.body);
+        let dataPassed = JSONunflatten(req.body);
+        let defaultChanged= dataPassed.defaultChanged? true: false;
+        if(defaultChanged) delete dataPassed.defaultChanged;
+        let program = <ProgramModel>dataPassed;
         logger.debug("program", program);
         logger.debug("/||newImage", newImage, originalName );
         async.waterfall([
             async.constant(req.user, newImage, originalName, ImgType.find((element) => element == "program")),
             Authenticate.uploadImage,
             Authenticate.saveImage,
-            async.apply(AdminServices.updateProgram, req.user, program)
+            async.apply(AdminServices.updateProgram, req.user, program, defaultChanged)
         ],  (err, result:any) => {
             if (err)
             { 
@@ -247,6 +251,11 @@ router.get("/survey",
 router.post("/saveSurvey", 
     passport.authenticate("jwt", {session: false}),
     (req, res, next) => {
+        let is_default:boolean;
+        if(req.body.profile && req.body.profile.is_default) {
+            is_default = req.body.profile.is_default;
+            delete req.body.profile.is_default;
+        }
         let survey = <SurveyModel>req.body;
         if(!survey.profile.site || req.user.role != Roles.find((element) => element == "SuperAdmin")){
             survey.profile.site=req.user.site;
@@ -275,15 +284,15 @@ router.post("/saveSurvey",
                     return next(err);
                 }
                 logger.debug("survey created: ", survey?survey.toString():survey, savedSurvey?savedSurvey.toString():savedSurvey);
-                if(savedSurvey && savedSurvey.profile.is_default && (savedSurvey.profile.category == SurveyCategory.find( (element) => element == "Signup")|| savedSurvey.profile.category == SurveyCategory.find( (element) => element == "PostSignup"))) {
+                if(savedSurvey && is_default && (savedSurvey.profile.category == SurveyCategory.find( (element) => element == "Signup")|| savedSurvey.profile.category == SurveyCategory.find( (element) => element == "PostSignup"))) {
                     let updateJson:any={};
                     if(savedSurvey.profile.category == SurveyCategory.find( (element) => element == "Signup")){
-                        updateJson["config.signup_pre"] = savedSurvey._id;
+                        updateJson["signup_pre"] = { survey: savedSurvey._id, program: survey.profile.program };
                     } else {
-                        updateJson["config.signup_post"] = savedSurvey._id;
+                        updateJson["signup_post"] = { survey: savedSurvey._id, program: survey.profile.program };
                     }
                     logger.debug("updateJson", JSON.stringify(updateJson));
-                    Site.findByIdAndUpdate(survey.profile.site, updateJson,  { select: "profile config", new: true }, (errata: Error, savedSite: SiteModel) => {
+                    Site.findByIdAndUpdate(survey.profile.site, { $addToSet: updateJson },  { select: "profile config signup_pre signup_post", new: true }, (errata: Error, savedSite: SiteModel) => {
                         if ( errata ) {
                             logger.error("error in saving site config for survey: ", errata);
                             savedSurvey.remove((error: any, product:SurveyModel) => {

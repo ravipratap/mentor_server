@@ -1,5 +1,5 @@
 import * as mongoose  from "mongoose";
-import { ProgramGoal } from "./program-model";
+import { MentoringGoal } from "./program-model";
 import { ImgStore, UserBriefModel, UserBriefSchema } from "./shared-model";
 
 export type ConnectionModel = mongoose.Document & {
@@ -46,7 +46,7 @@ export const ActivityTypes = ["Signed Up", "Introduced", "GoalsSet","ActionPlan"
 const ConnectionSchema = new mongoose.Schema({
     profile: {
         name: String,
-        goal: { type: String, enum: ProgramGoal },
+        goal: { type: String, enum: MentoringGoal },
         status: { type: String, enum: ConnectionStatus, default: "Open" },
         program: mongoose.Schema.Types.ObjectId,
         img_id: mongoose.Schema.Types.ObjectId,

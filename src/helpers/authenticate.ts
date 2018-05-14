@@ -5,10 +5,11 @@ import { Request, Response, NextFunction } from "express";
 import User , { UserModel, Roles, ApplicationStatus} from "../models/user-model";
 import Site, { SiteModel } from "../models/site-model";
 import Image, { ImageModel, ImgType } from "../models/image-model";
-import { ImgStore } from "../models/shared-model";
+import { ImgStore, SurveyResponseModel } from "../models/shared-model";
 
 import * as fs from "fs";
 import * as MailService from "./mailService";
+import { SurveyModel } from "../models/survey-model";
 const cloudinary = require('cloudinary');
 
 const logger = require("../config/logger").logger;
@@ -157,7 +158,7 @@ export let extractRootDomain = (url: string) => {
 export let uploadImage = (user: any, newImage: ImageModel, original_name: string, imgType: string, done: Function) => {
     // logger.debug("////////////////newImage", newImage, original_name, imgType );
     if(!newImage) {
-        done(null, undefined);
+        done(undefined, undefined);
     } else {
         cloudinary.v2.uploader.upload(newImage.img_path, (error:any , result:any) => {
             if(error) {
@@ -194,7 +195,7 @@ export let uploadImage = (user: any, newImage: ImageModel, original_name: string
                     //     logger.debug("Clodinary Deleted",result.public_id, res)
                     // });
                 }, 5*60*1000);
-                done(null, newImage);
+                done(undefined, newImage);
             }
         });
     }
@@ -202,7 +203,7 @@ export let uploadImage = (user: any, newImage: ImageModel, original_name: string
 
 export let saveImage = (newImage: ImageModel, done: Function) => {
     if(!newImage) {
-        done(null, undefined);
+        done(undefined, undefined);
     } else {
         (new Image(newImage)).save((err: Error, savedImage: ImageModel) => {
             if(err) {
@@ -210,7 +211,7 @@ export let saveImage = (newImage: ImageModel, done: Function) => {
                 done(err);
             } else {
                 logger.debug("savedImage", savedImage?savedImage.toString():savedImage);
-                done(null, savedImage);
+                done(undefined, savedImage);
             }
         });
     }
@@ -235,7 +236,7 @@ export let updateUserProfilePic = (user: any, projection: string,  savedImage: I
             done(true);
         } else {
             logger.debug("userFromDb", userFromDb?userFromDb.toString():userFromDb);
-            done(null, {img: savedImage, user: userFromDb});
+            done(undefined, {img: savedImage, user: userFromDb});
         }
     });
 };
@@ -247,7 +248,7 @@ export let createProfile = (newUser: UserModel, existingSite: SiteModel, savedIm
         emailOTP = createRandomOTP();
     }
     if(newUser.login.mobile && newUser.login.mobile_verified){
-        emailOTP = createRandomOTP(); 
+        mobileOTP = createRandomOTP(); 
     }
     if(newUser.profile && newUser.profile.positions) logger.debug("socialUser positions ", newUser.profile.positions.toString());
     newUser.logs = {
@@ -285,7 +286,7 @@ export let createProfile = (newUser: UserModel, existingSite: SiteModel, savedIm
                 logger.error("error in adding user: ", err);
                 done(err);
             } else {
-                done(null, savedUser);
+                done(undefined, savedUser);
             }
         })
     } else {
@@ -294,7 +295,7 @@ export let createProfile = (newUser: UserModel, existingSite: SiteModel, savedIm
                 logger.error("error in adding user: ", err);
                 done(err);
             } else {
-                done(null, savedUser);
+                done(undefined, savedUser);
             }
         });
     }
@@ -412,7 +413,7 @@ export let updateProfile = (newUser: UserModel, existingUser: UserModel, overwri
             done(err);
         } else {
             logger.debug("updated existingUser", savedUser? savedUser.toString(): savedUser);
-            done(null, savedUser);
+            done(undefined, savedUser);
         }
     });
 
@@ -433,7 +434,7 @@ export let updateUserForSignIn = (existingUser: UserModel, done: Function) => {
         } else {
             // logger.debug("updated existingUser", savedUser);
             // MailService.sendVerifyMail(savedUser);
-            done(null, savedUser);
+            done(undefined, savedUser);
         }
     });
 };

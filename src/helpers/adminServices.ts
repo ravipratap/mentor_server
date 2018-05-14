@@ -4,12 +4,15 @@ import { Roles, ApplicationStatus } from "../models/user-model";
 import { ImageModel } from "../models/image-model";
 import { default as User, UserModel } from "../models/user-model";
 import Site, { SiteModel } from "../models/site-model";
-import Survey, { SurveyModel, UserSurveyModel } from "../models/survey-model";
+import Survey, { SurveyModel, UserSurveyModel, SurveyCategory } from "../models/survey-model";
 import { SurveyResponseModel, UserBriefModel } from "../models/shared-model";
 import * as MailService from "./mailService";
 import * as SmsService from "./smsService";
+import { convertUsertoString } from "./utilities";
 const logger = require("../config/logger").logger;
-export let updateProgram = (user: any, program: ProgramModel, savedImage: ImageModel, done: Function) => {
+
+
+export let updateProgram = (user: any, program: ProgramModel, defaultChanged: boolean, savedImage: ImageModel, done: Function) => {
     if(!program.site || user.role != Roles.find((element) => element == "SuperAdmin")) {
         program.site = user.site;
     }
@@ -31,7 +34,59 @@ export let updateProgram = (user: any, program: ProgramModel, savedImage: ImageM
                 done(err);
             } else {
                 logger.debug("program: ", savedProgram?savedProgram.toString():savedProgram);
-                done(undefined, savedProgram);
+                if(defaultChanged && !program.profile.is_default){
+                    Site.findByIdAndUpdate(program.site, { $pull: {
+                        'signup_pre': {
+                            "program": savedProgram._id
+                        }, 
+                        'signup_post': {
+                            "program": savedProgram._id
+                        }
+                    }},  { select: "profile config signup_pre signup_post", new: true }, (errata: Error, savedSite: SiteModel) => {
+                        if ( errata ) {
+                            logger.error("error in removing signup surveys for program: ", errata);
+                        }
+                        logger.debug("site saved after removing signup surveys", savedSite? savedSite.toString(): undefined);
+                        done(undefined, savedProgram);
+                    });
+                } else  if(defaultChanged && program.profile.is_default) {
+                    Survey.find({
+                        $and: [
+                            { "profile.program": savedProgram._id },
+                            { $or: [{"profile.category": SurveyCategory.find((element) => element == "Signup")}, {"profile.category": SurveyCategory.find((element) => element == "PostSignup")}] }
+                        ]
+                    }, "profile" , (errata: Error, existingSurveys: SurveyModel[]) => {
+                        if ( errata ) {
+                            logger.error("error in adding signup surveys for program: ", errata);
+                        }
+                        if(existingSurveys && existingSurveys.length > 0){
+                            let updateJson:any={};
+                            logger.debug("existing surveys found for the program", existingSurveys? existingSurveys.toString(): undefined);
+                            existingSurveys.forEach(existingSurvey => {
+                                if(existingSurvey.profile.category == SurveyCategory.find( (element) => element == "Signup")){
+                                    updateJson["signup_pre"] = { survey: existingSurvey._id, program: savedProgram._id };
+                                } else {
+                                    updateJson["signup_post"] = { survey: existingSurvey._id, program: savedProgram._id };
+                                }
+                                logger.debug("updateJson", JSON.stringify(updateJson));
+                            });
+                            Site.findByIdAndUpdate(savedProgram.site, { $addToSet: updateJson },  { select: "profile config signup_pre signup_post", new: true }, (errata2: Error, savedSite: SiteModel) => {
+                                if ( errata2 ) {
+                                    logger.error("error in saving site config for survey: ", errata2);
+                                }
+                                logger.debug("site saved after adding  survey", savedSite? savedSite.toString(): undefined);
+                                 
+                                logger.debug("site saved after adding signup surveys", savedSite? savedSite.toString(): undefined);
+                                done(undefined, savedProgram); 
+                            });
+                        } else{   
+                            logger.debug("existing surveys not found for the program", existingSurveys? existingSurveys.toString(): undefined);
+                            done(undefined, savedProgram);
+                        }
+                    });
+                } else {
+                    done(undefined, savedProgram);
+                }
             }
         });
     } else {
@@ -49,248 +104,6 @@ export let updateProgram = (user: any, program: ProgramModel, savedImage: ImageM
             });
         }
     }
-};
-export let populateSignUpForm =  ( preSignup: boolean, existingSite: SiteModel, specificSurveyId: string, savedUser: UserModel, done: Function) => {
-    
-    let siteDefaultQuestionsNeeded = ((preSignup && existingSite && existingSite.config.signup_pre) || (!preSignup && existingSite && existingSite.config.signup_post))?true: false;
-    let surveyId: string;
-    let surveyResponse: SurveyResponseModel;
-    let is_mentor = false;
-    let userProgramId: string;
-    if(specificSurveyId) surveyId =specificSurveyId;
-    if(savedUser.programs && savedUser.programs.length > 0) {
-        savedUser.programs.forEach( (programData) => {
-            if(surveyId) {
-                if(programData.signup_pre && programData.signup_pre.survey == specificSurveyId) surveyResponse = programData.signup_pre;
-                if(programData.signup_post && programData.signup_post.survey == specificSurveyId) surveyResponse = programData.signup_post;
-            } else {
-                if(preSignup && existingSite && programData.signup_pre && programData.signup_pre.answered  && programData.signup_pre.survey == existingSite.config.signup_pre){
-                    siteDefaultQuestionsNeeded = false;
-                }
-                if(!preSignup && existingSite && programData.signup_post && programData.signup_post.answered  && programData.signup_post.survey == existingSite.config.signup_post){
-                    siteDefaultQuestionsNeeded = false;
-                }
-                if((preSignup && programData.signup_pre && !programData.signup_pre.answered) || (!preSignup && programData.signup_post && !programData.signup_post.answered)){
-                    surveyId = preSignup?programData.signup_pre.survey: programData.signup_post.survey;
-                    surveyResponse = preSignup?programData.signup_pre: programData.signup_post; 
-                    is_mentor = programData.is_mentor;
-                    userProgramId = (programData as any)._id;
-                    logger.debug("programData", programData.toString(), "userProgramId", userProgramId.toString());
-                }
-            }
-        });
-    }
-
-    if(!specificSurveyId && existingSite && siteDefaultQuestionsNeeded){
-        surveyId = preSignup?existingSite.config.signup_pre: existingSite.config.signup_post;
-    }
-    const result : any = {user: savedUser, survey: undefined};
-    if(!surveyId){
-        if(!savedUser.login.email_verified && savedUser.login.email_token && savedUser.login.email_token_expires > new Date()) {
-            result.emailVerify = true;
-            MailService.sendVerifyMail(savedUser);
-        }
-        if(!savedUser.login.mobile_verified && savedUser.login.mobile_otp && savedUser.login.mobile_otp_expires > new Date()) {
-            result.mobileVerify = true;
-            SmsService.sendVerifySms(savedUser);
-        }
-        done(undefined, result );
-    } else {
-        Survey.findById(surveyId, "profile questions", (err: Error, survey: SurveyModel) => {
-            if ( err ) {
-                logger.error("error in retreiving programs: ", err);
-                done(err);
-            } else {
-                logger.debug("surveyId", surveyId?surveyId.toString():surveyId);
-                let newSurveyResponse:any;
-                let newSurvey:UserSurveyModel; 
-                if(survey) {
-                    newSurveyResponse = populateAnswersForSignUpForm(savedUser, surveyResponse, survey, is_mentor);
-                    newSurvey= <UserSurveyModel>JSON.parse(JSON.stringify(survey));
-                    newSurvey.questions.sort((a, b) => a.order - b.order);
-                    if(userProgramId) {
-                        newSurvey.userProgramId = userProgramId;
-                        logger.debug("Updated survey userProgramId", newSurvey.userProgramId.toString(), userProgramId.toString());
-                    }
-                    logger.debug("survey found for response: ", JSON.stringify(newSurvey));
-                }
-                done(undefined, {user: savedUser, survey: newSurvey, surveyResponse: newSurveyResponse});
-            }
-        });    
-    }
-
-
-};
-export let populateAnswersForSignUpForm = (savedUser: UserModel, surveyResponse: SurveyResponseModel, survey: SurveyModel, is_mentor?: boolean) => {
-    if(surveyResponse) surveyResponse.answers.sort((a, b) => a.order - b.order);
-    let newSurveyResponse = surveyResponse?JSON.parse(JSON.stringify(surveyResponse)) : undefined;
-    if(!newSurveyResponse){
-        newSurveyResponse=<SurveyResponseModel>{
-            survey: survey._id,
-            answered: false,
-            answers: []
-        };
-    }
-    survey.questions.forEach( (question, questionIndex) => {
-        let answer:any = newSurveyResponse.answers.find((element:any) => element.qid == (question as any)._id);
-        logger.debug("answers  exists?:", JSON.stringify(answer));
-        if(!answer){
-            answer = {};
-            answer.qid= (question as any)._id;
-            answer.order= questionIndex;
-            answer.question = is_mentor && question.mentor_question? question.mentor_question : question.question;
-            answer.category =question.category;
-        }
-        switch(question.category){
-            case "Photo": {
-                if(savedUser.pic){
-                    answer.answer = {
-                        img_path: savedUser.pic.img_path,
-                        img_store: savedUser.pic.img_store 
-                    };
-                }
-                break;
-            }
-            case "Gender": {
-                if(savedUser.profile.gender) answer.answer = savedUser.profile.gender;
-                break;
-            }
-            case "Current Location": {
-                // logger.debug("savedUser.profile.location", savedUser.profile.location.toString());
-                if(savedUser.profile.location && savedUser.profile.location.name) answer.answer = savedUser.profile.location.name + ", " + savedUser.profile.location.country.name;
-                break;
-            }
-            case "Age": {
-                if(savedUser.profile.age) answer.answer = savedUser.profile.age;
-                break;
-            }
-            case "ExpInYrs": {
-                if(savedUser.profile.expInYrs) answer.answer = savedUser.profile.expInYrs;
-                break;
-            }
-            case "Job Level": {
-                if(savedUser.profile.level) answer.answer = savedUser.profile.level;
-                break;
-            }
-            case "Function": {
-                if(savedUser.profile.function && savedUser.profile.function.length > 0) answer.answer = savedUser.profile.function;
-                break;
-            }
-            case "Industry": {
-                if(savedUser.profile.industry && savedUser.profile.industry.length > 0) answer.answer = savedUser.profile.industry;
-                break;
-            }
-            case "Skills": {
-                if(savedUser.profile.skills && savedUser.profile.skills.length > 0) answer.answer = savedUser.profile.skills;
-                break;
-            }
-        }
-        if(questionIndex < newSurveyResponse.answers.length) {
-            newSurveyResponse.answers[questionIndex] = answer; 
-        } else {
-            newSurveyResponse.answers.push(answer);
-        }
-    });
-    return newSurveyResponse;
-};
-export let populateUserFromSignUpForm = (preSignup: boolean, is_mentor:boolean, userProgramId: string, programId: string, userFromToken: any, surveyResponse: SurveyResponseModel, savedImage: ImageModel, done: Function) => {
-    if(surveyResponse) {
-        let updateJson: any = {};
-        let pushJson: any  = {};
-        let searchQuery: any; 
-        if(savedImage) {
-            updateJson.pic = {
-                img_id: savedImage._id,
-                img_store: savedImage.store,
-                thumbnail: savedImage.thumbnail_path,
-                img_path: savedImage.img_path
-            };
-        }
-        surveyResponse.answers.forEach((answer, answerIndex) => {
-            logger.debug("answer: ", answer);
-            if(answer.answer){
-                switch(answer.category){
-                    case "Gender": {
-                        updateJson["profile.gender"] = answer.answer;
-                        break;
-                    }
-                    case "Current Location": {
-                        updateJson["profile.location.name"] = answer.answer.substr(0,answer.answer.lastIndexOf(','));
-                        updateJson["profile.location.country.name"] = answer.answer.substr(answer.answer.lastIndexOf(',') + 2);
-                        break;
-                    }
-                    case "Age": {
-                        updateJson["profile.age"] = answer.answer;
-                        break;
-                    }
-                    case "ExpInYrs": {
-                        updateJson["profile.expInYrs"] = answer.answer;
-                        break;
-                    }
-                    case "Job Level": {
-                        updateJson["profile.level"] = answer.answer;
-                        break;
-                    }
-                    case "Function": {
-                        updateJson["profile.function"] = answer.answer;
-                        break;
-                    }
-                    case "Industry": {
-                        updateJson["profile.industry"] = answer.answer;
-                        break;
-                    }
-                    case "Skills": {
-                        updateJson["profile.skills"] = answer.answer;
-                        break;
-                    }
-                }
-            }
-        });
-
-        if(userProgramId){
-            searchQuery = {_id: userFromToken._id, "programs._id" : userProgramId};
-            updateJson["programs.$.is_mentor"] = is_mentor;
-            if(preSignup){
-                updateJson["programs.$.signup_pre"] = surveyResponse;
-            } else {
-                updateJson["programs.$.signup_post"] = surveyResponse;
-            }
-
-        } else {
-            searchQuery = {_id: userFromToken._id};
-            pushJson = { 
-                programs: {
-                    program: programId,
-                    status: ApplicationStatus.find((element) => element == "Pending"),
-                    is_mentor: is_mentor
-                }
-            };
-            if(preSignup){
-                pushJson.programs.signup_pre = surveyResponse;
-            } else {
-                pushJson.programs.signup_post = surveyResponse;
-            }
-        }
-        // logger.debug("updateJson sign up form", updateJson);
-        // logger.debug("pushJson sign up form", pushJson);
-        let updatePushJson: any = {};
-        if(updateJson && Object.keys(updateJson).length !== 0 ) updatePushJson.$set = updateJson;
-        if(pushJson && Object.keys(pushJson).length !== 0 ) updatePushJson.$push = pushJson;
-        logger.debug("updatePushJson sign up form", updatePushJson);
-        User.findOneAndUpdate( searchQuery,
-            updatePushJson,
-            {select: "site login sign profile pic programs logs", new: true}, 
-            (err: Error, savedUser: UserModel) => {      
-                if ( err ) {
-                    logger.error("error in updating user from form", err);
-                    done(err);
-                } else {
-                    logger.debug("updated existingUser",userProgramId,  savedUser?savedUser.toString():savedUser);
-                    done(undefined, savedUser);
-                }
-        });
-        
-    }  
 };
 
 export let getAdmins =  (userFromToken: any,  programId: string, siteId: string, done: Function) => {

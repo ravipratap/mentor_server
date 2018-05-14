@@ -1,3 +1,20 @@
+import { UserModel } from "../models/user-model";
+const transformProps = require('transform-props');
+
+function castToString(arg:any) {
+    return String(arg);
+}
+export let convertUsertoString =(savedUser: UserModel) => {
+    if(savedUser){
+        let docObj= savedUser.toObject();
+        transformProps(docObj, castToString, ['_id', 'qid', 'img_id', 'program', 'survey', 'site', 'forUser']);
+        return docObj;
+    } else {
+        return savedUser;
+    }
+};
+
+
 
 export let JSONflatten = (data:any) => {
     var result:any = {};
