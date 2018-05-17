@@ -76,9 +76,11 @@ app.use(expressValidator());
 //     autoReconnect: true
 //   })
 // }));
-app.use(passport.initialize());
-app.use(passport.session());
-require("./config/passport")(passport);
+// app.use(passport.initialize());
+// app.use(passport.session());
+// require("./config/passport")(passport);
+const PassportAuth = require("./config/passport").default;
+app.use(PassportAuth.initialize());
 
 // allow cors
 app.use(cors());

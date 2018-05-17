@@ -1,7 +1,7 @@
 import { UserModel } from "../models/user-model";
 import * as https from "https";
 import * as querystring from "querystring";
-import { SiteModel } from "../models/site-model";
+import Site, { SiteModel } from "../models/site-model";
 import { ProgramModel } from "../models/program-model";
 const logger = require("../config/logger").logger;
 
@@ -138,13 +138,31 @@ let makeOneStringFromAPIErrorArray = function (errorArray:any) {
 
 
 
+export let sendVerifySms = (savedUser: UserModel, existingSite?: SiteModel, callback?: Function) => {
+    if(existingSite){
+        sendVerificationSms(savedUser, existingSite, callback);
+    } else {
+        Site.findById(savedUser.site, "profile", (err:Error, site:SiteModel) => {
+            if(err) return logger.error("error in getting site for sending verification mail", err);
+            sendVerificationSms(savedUser, site, callback);
+        });
+    }
 
-export let sendVerifySms = (savedUser: UserModel) => {
-    sendTextLocalSMS("9971999080", "OTP for login to mentorRank is 123456", "TXTLCL", {}, (err:any, response?:any) => {
-        if(err) logger.error("error in sending sms", err);
+};
+
+let sendVerificationSms = (savedUser: UserModel, existingSite: SiteModel, callback: Function) => {
+    let number = "9971999080";
+    let port = 8100;
+    let resetLink="http://"+existingSite.profile.domain+ ":"+port+"/#/otp/"+savedUser._id + "/" + savedUser.login.mobile_otp;
+    let msg = `Please enter OTP on pulseRank as ${savedUser.login.mobile_otp}.
+     Alternatively, you can click on the link ${resetLink}`;
+    logger.debug("sendVerifySms", msg);
+    sendTextLocalSMS(number, msg, "TXTLCL", {}, (err:any, response?:any) => {
+        if(err)  return logger.error("error in sending sms", err);
         logger.debug("sendVerifySms response: ", response);
         // update the current balance if the API returned the node
         if (response.balance) logger.debug("response.balance : ", response.balance);
+        if(callback) callback()
     });
     
 

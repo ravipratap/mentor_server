@@ -1,6 +1,7 @@
 import * as express from "express";
 const router = express.Router();
-import * as passport from "passport";
+// import * as passport from "passport";
+const PassportAuth = require("../config/passport").default;
 import * as url from "url";
 import * as jwt from "jsonwebtoken";
 import * as async from "async";
@@ -14,10 +15,13 @@ import { Error } from "mongoose";
 //Handling multipart form data, file uploads
 import * as multer from "multer";
 import { ImgStore, SurveyResponseModel } from "../models/shared-model";
+import * as MailService from "../helpers/mailService";
+import * as SmsService from "../helpers/smsService";
 import * as AdminServices  from  "../helpers/adminServices";
 import * as SurveyServices  from  "../helpers/surveyServices";
 import { SurveyModel, SurveyCategory } from "../models/survey-model";
 import { JSONunflatten, convertUsertoString } from "../helpers/utilities";
+import passport from "../config/passport";
 
 const UPLOAD_PATH = 'uploads';
 var storage = multer.diskStorage({
@@ -70,7 +74,7 @@ router.post("/signup", (req, res, next) => {
                         if (err) { 
                             return res.json({success : false});
                         } else { 
-                            const tokenData = Authenticate.getJWTtoken(result.user);
+                            const tokenData = PassportAuth.getJWTtoken(result.user);
                             return res.json({
                                 success: true,
                                 token: "JWT " + tokenData.token,
@@ -95,7 +99,7 @@ router.post("/signup", (req, res, next) => {
                         if (err){ 
                             return res.json({success : false});; 
                         } else { 
-                            const tokenData = Authenticate.getJWTtoken(result.user);
+                            const tokenData = PassportAuth.getJWTtoken(result.user);
                             return res.json({
                                 success: true,
                                 token: "JWT " + tokenData.token,
@@ -167,7 +171,7 @@ router.post("/social", (req, res, next) => {
                         if (err) { 
                             return res.json({success : false});; 
                         } else { 
-                            const tokenData = Authenticate.getJWTtoken(result.user);
+                            const tokenData = PassportAuth.getJWTtoken(result.user);
                             return res.json({
                                 success: true,
                                 token: "JWT " + tokenData.token,
@@ -201,7 +205,7 @@ router.post("/social", (req, res, next) => {
                         if (err) { 
                             return res.json({success : false});; 
                         } else { 
-                            const tokenData = Authenticate.getJWTtoken(result.user);
+                            const tokenData = PassportAuth.getJWTtoken(result.user);
                             return res.json({
                                 success: true,
                                 token: "JWT " + tokenData.token,
@@ -235,7 +239,7 @@ router.post("/social", (req, res, next) => {
                         if (err) { 
                             return res.json({success : false});; 
                         } else { 
-                            const tokenData = Authenticate.getJWTtoken(result.user);
+                            const tokenData = PassportAuth.getJWTtoken(result.user);
                             return res.json({
                                 success: true,
                                 token: "JWT " + tokenData.token,
@@ -267,6 +271,7 @@ router.get("/mailOpen", (req, res, next) => {
         res.writeHead(200, {'Content-Type': 'image/png'});
         res.end(buf,'binary');
 });
+
 router.post("/signin", (req, res, next) => {
     logger.debug("signing of " + req.body.username + "from domain: "+ Authenticate.extractHostname(req.headers.origin + "") );
     Site.getSiteByEmailOrDomain(Authenticate.extractEmailHostname(req.body.username), Authenticate.extractHostname(req.headers.origin + ""), (err: Error, existingSite: SiteModel) => {
@@ -279,7 +284,7 @@ router.post("/signin", (req, res, next) => {
         const password = req.body.password;
 
         User.getUserByUsername(username, existingSite._id, req.body.isApp, "site login sign profile pic logs programs pass", (err: Error, user: UserModel) => {
-            if ( err ) throw err;
+            if ( err ) return next(err);
             if (!user) {
                 return res.json({success: false, msg: "User not found"});
             }
@@ -295,7 +300,7 @@ router.post("/signin", (req, res, next) => {
                     logger.debug("User matched:  _id: ", user._id.toString(), "profile: ", user.profile.toString(), "login: ", user.login.toString(), "site:: ", user.site.toString());
                     if(existingSite._id.equals(user.site)){
                         async.waterfall([
-                            async.constant(user),
+                            async.constant(user, undefined),
                             Authenticate.updateUserForSignIn,
                             async.apply(SurveyServices.populateSignUpForm, true, existingSite, undefined) 
                         ],  (err, result:any) => {
@@ -303,7 +308,7 @@ router.post("/signin", (req, res, next) => {
                             if (err) { 
                                 return res.json({success : false});
                             } else { 
-                                const tokenData = Authenticate.getJWTtoken(result.user);
+                                const tokenData = PassportAuth.getJWTtoken(result.user);
                                 return res.json({
                                     success: true,
                                     token: "JWT " + tokenData.token,
@@ -316,7 +321,7 @@ router.post("/signin", (req, res, next) => {
                                 });
                             }
                         }); 
-                        // const tokenData = Authenticate.getJWTtoken( user);
+                        // const tokenData = PassportAuth.getJWTtoken( user);
                         // logger.debug("tokenData: ", JSON.stringify(tokenData));
                         // return res.json({
                         //     success: true,
@@ -332,7 +337,7 @@ router.post("/signin", (req, res, next) => {
                             }
                             logger.debug("site found for signup: ",newSite?newSite.toString():newSite);    
                             async.waterfall([
-                                async.constant(user),
+                                async.constant(user, undefined),
                                 Authenticate.updateUserForSignIn,
                                 async.apply(SurveyServices.populateSignUpForm, true, newSite, undefined) 
                             ],  (err, result:any) => {
@@ -340,7 +345,7 @@ router.post("/signin", (req, res, next) => {
                                 if (err) { 
                                     return res.json({success : false});
                                 } else { 
-                                    const tokenData = Authenticate.getJWTtoken(result.user);
+                                    const tokenData = PassportAuth.getJWTtoken(result.user);
                                     return res.json({
                                         success: true,
                                         token: "JWT " + tokenData.token,
@@ -362,8 +367,9 @@ router.post("/signin", (req, res, next) => {
         });
     });
 });
+//passport.authenticate('jwt', {session: false})
 
-router.post('/signUpForm', passport.authenticate('jwt', {session: false}), upload.single('picture'), (req, res, next) => {
+router.post('/signUpForm', PassportAuth.authenticate(), upload.single('picture'), (req, res, next) => {
     let newImage: ImageModel;
         let originalName: string;
         if(req.file){
@@ -396,7 +402,8 @@ router.post('/signUpForm', passport.authenticate('jwt', {session: false}), uploa
             ],  (err, result:any) => {
                 if (err)
                 { 
-                    res.json({success : false});; 
+                    logger.error("Error in updating profile", err);
+                    res.json({success : false, msg: (err as any).msg });
                 } else {
                     logger.debug("updatePr0file result", convertUsertoString(result));
                     let aid:string;
@@ -452,7 +459,134 @@ router.post('/signUpForm', passport.authenticate('jwt', {session: false}), uploa
         }   
 });
 
-router.get("/profile", passport.authenticate("jwt", {session: false}), (req, res, next) => {
+router.post("/saveOTP", (req, res, next) => {
+    logger.debug("OTP request ", req.body);
+    if (req.headers && req.headers.authorization) {
+        let decoded = PassportAuth.decodeToken(req.headers.authorization, (err: Error, decoded:any) => {
+            let userFromToken:any;
+            if(decoded) {
+                userFromToken = PassportAuth.getUserFromDecodedToken(decoded);
+                if(req.body.userid != userFromToken._id) return res.status(401).send({msg : "Verifying someone else's account"});
+            }
+            User.findById(req.body.userid, "site login sign profile pic logs programs pass", (err: Error, user: UserModel) => {
+                if ( err ) return next(err);
+                let updateJson: any = {};
+                if(req.body.OTP) {
+                    if(user.login.email_token == req.body.OTP && user.login.email_token_expires > new Date()){
+                        updateJson["login.email_verified"] = true;
+                    }
+                    if(user.login.mobile_otp == req.body.OTP && user.login.mobile_otp_expires > new Date()){
+                        updateJson["login.mobile_verified"] = true;
+                    }
+                } else {
+                    if(req.body.emailOTP && req.body.email == user.login.email && user.login.email_token == req.body.emailOTP && user.login.email_token_expires > new Date()){
+                        updateJson["login.email_verified"] = true;
+                    }
+                    if(req.body.mobileOTP && req.body.mobile == user.login.mobile && user.login.mobile_otp == req.body.mobileOTP && user.login.mobile_otp_expires > new Date()){
+                        updateJson["login.mobile_verified"] = true;
+                    }
+                    if(req.body.emailOTP && req.body.mobileOTP && Object.keys(updateJson).length < 2){
+                        return res.json({ success: false, msg : "No valid OTP"}); 
+                    }
+                }
+                // logger.debug("decoded", userFromToken);
+                if(Object.keys(updateJson).length !== 0){
+                    if(req.body.loggedIn){                    
+                        if(updateJson["login.email_verified"]){
+                            user.login.email_verified = true;
+                        }
+                        if(updateJson["login.mobile_verified"]){
+                            user.login.mobile_verified = true;
+                        }
+                        user.save((err: Error, savedUser:UserModel) => {
+                            if ( err ) return next(err);
+                            logger.debug("User with OTP saved", convertUsertoString(savedUser));
+                            return res.json({ 
+                                success: true,
+                                email_verified: savedUser.login.email_verified,
+                                mobile_verified: savedUser.login.mobile_verified
+                            });
+                        });
+                    } else {                      
+                        let query;
+                        if(userFromToken){
+                            query = { _id: userFromToken.site };
+                        } else {
+                            query = {"profile.domain": Authenticate.extractHostname(req.headers.origin + "")};
+                        }
+                        Site.findOne(query, "profile config signup_pre signup_post", ( err:Error, existingSite: SiteModel ) => {                            
+                            async.waterfall([
+                                async.constant(user, updateJson),
+                                Authenticate.updateUserForSignIn,
+                                async.apply(SurveyServices.populateSignUpForm, true, existingSite, undefined) 
+                            ],  (err, result:any) => {
+                                logger.debug("SignedInWithOTPSaved", err, result? JSON.stringify(result):result);
+                                if (err) { 
+                                    return res.json({success : false});
+                                } else { 
+                                    const tokenData = PassportAuth.getJWTtoken(result.user);
+                                    return res.json({
+                                        success: true,
+                                        token: "JWT " + tokenData.token,
+                                        user: tokenData.userForToken,
+                                        config: Authenticate.getSiteConfig(result.user, existingSite),
+                                        survey: result.survey,
+                                        surveyResponse: result.surveyResponse,
+                                        emailVerify: result.emailVerify,
+                                        mobileVerify: result.mobileVerify
+                                    });
+                                }
+                            }); 
+                        });
+                    }
+                }  else {
+                    return res.json({ success: false, msg : "No valid OTP"});
+                }
+            });        
+       });
+    } else {
+        return res.status(401).send({msg : "Incorrect request header"});
+    }
+
+});
+
+router.post("/resendOTP", (req, res, next) => {
+    logger.debug("OTP resend request ", req.body);
+    let updateJson: any = {};
+    if(req.body.email){
+        let emailOTP = Authenticate.createRandomOTP();
+        updateJson["login.email_token"] = emailOTP + "";
+        updateJson["login.email_token_expires"] = new Date( Date.now() + 1800 * 1000 ); //30 mins
+    } else if(req.body.mobile){
+        let mobileOTP = Authenticate.createRandomOTP();
+        updateJson["login.mobile_otp"] = mobileOTP + "";
+        updateJson["login.mobile_otp_expires"] = new Date( Date.now() + 1800 * 1000 ); //30 mins
+    }
+    User.findByIdAndUpdate(req.body.userid,
+        updateJson,
+        {select: "site login sign profile pic programs logs", new: true}, 
+        (err: Error, savedUser: UserModel) => {      
+            if ( err ) {
+                logger.error("error in updating user for resending OTP", err);
+                return res.status(500).send({msg : "Un"});
+            } else {
+                if(req.body.email) {                            
+                    MailService.sendVerifyMail(savedUser, undefined, () => {
+                        return res.json({success : true});
+                    });
+                }
+                if(req.body.mobile) {
+                    SmsService.sendVerifySms(savedUser, undefined, () => {
+                        return res.json({success : true});
+                    });
+                }
+            }
+    });
+
+
+});
+
+router.get("/profile",PassportAuth.authenticate(), (req, res, next) => {
     const parsedUrl = url.parse(req.url, true); // true to get query as object
     const params = parsedUrl.query;
     let userId = params._id;
@@ -493,7 +627,7 @@ router.get("/profile", passport.authenticate("jwt", {session: false}), (req, res
     });
 
 });
-router.post('/profilePicture', passport.authenticate('jwt', {session: false}), upload.single('picture'), (req, res, next) => {
+router.post('/profilePicture', PassportAuth.authenticate(), upload.single('picture'), (req, res, next) => {
     if(req.file){
         const fileNameFull= req.file.destination+'/'+req.file.filename;
         logger.debug('req.picture.filename: '+ fileNameFull);
@@ -524,16 +658,16 @@ router.post('/profilePicture', passport.authenticate('jwt', {session: false}), u
 });
 
 router.get("/admin",
-    passport.authenticate("jwt", {session: false}),
-    Authenticate.roleAuthorization(["SuperAdmin"]),
+    PassportAuth.authenticate(),
+    PassportAuth.roleAuthorization(["SuperAdmin"]),
     (req, res, next) => {
     // res.json({user : req.user});
 });
 
 
 router.get("/transact",
-    passport.authenticate("jwt", {session: false}),
-    Authenticate.recentlyLoggedIn(),
+    PassportAuth.authenticate(),
+    PassportAuth.recentlyLoggedIn(),
     (req, res, next) => {
     res.json({user : req.user});
 });

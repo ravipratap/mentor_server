@@ -94,11 +94,11 @@ export let populateSignUpForm =  ( preSignup: boolean, existingSite: SiteModel, 
     if(!surveyId){
         if(!savedUser.login.email_verified && savedUser.login.email_token && savedUser.login.email_token_expires > new Date()) {
             result.emailVerify = true;
-            MailService.sendVerifyMail(savedUser);
+            MailService.sendVerifyMail(savedUser, existingSite);
         }
         if(!savedUser.login.mobile_verified && savedUser.login.mobile_otp && savedUser.login.mobile_otp_expires > new Date()) {
             result.mobileVerify = true;
-            SmsService.sendVerifySms(savedUser);
+            SmsService.sendVerifySms(savedUser, existingSite);
         }
         done(undefined, result );
     } else {
@@ -355,7 +355,7 @@ export let populateAnswersForSignUpForm = (savedUser: UserModel, surveyResponse:
 };
 export let populateContactFromSignUpForm = (category: string, userFromToken: any, surveyResponse: SurveyResponseModel, savedImage: ImageModel, done: Function) => {
     let answers =surveyResponse.answers.filter(element => element.answer && element.category == "Contact");
-    let answer = answers? answers[0]: undefined;
+    let answer = answers && answers.length>0? answers[0]: undefined;
     if(answer){
         let contact:any = {}
         let searchQuery:any = [{_id: userFromToken._id}]; 
@@ -372,13 +372,13 @@ export let populateContactFromSignUpForm = (category: string, userFromToken: any
                 let user = filteredUserList[0];
                 if(user.login.email != answer.answer.email){
                     if(user.login.email_verified && !user.login.mobile_verified){
-                        return done({msg: "Please verify mobile before changing veriefied email"});
+                        return done({msg: "Please verify mobile before changing verified email"});
                     }
                     contact.email= answer.answer.email;
                 }
                 if(user.login.mobile != answer.answer.mobile){
                     if(!user.login.email_verified && user.login.mobile_verified){
-                        return done({msg: "Please verify email before changing veriefied mobile"});
+                        return done({msg: "Please verify email before changing verified mobile"});
                     }
                     contact.mobile= answer.answer.mobile;
                 }
@@ -464,7 +464,7 @@ export let populateUserFromSignUpForm = (is_mentor:boolean, userProgramId: strin
             }
         }
         surveyResponse.answers.forEach((answer, answerIndex) => {
-            logger.debug("answer: ", answer);
+            // logger.debug("answer: ", answer);
             if(answer.answer){
                 switch(answer.category){
                     case "Gender": {
@@ -661,7 +661,7 @@ export let populateUserFromSignUpForm = (is_mentor:boolean, userProgramId: strin
                         if(contact.email && !savedUser.login.email_verified && savedUser.login.email_token && savedUser.login.email_token_expires > new Date()) {                            
                             MailService.sendVerifyMail(savedUser);
                         }
-                        if(contact.email && !savedUser.login.mobile_verified && savedUser.login.mobile_otp && savedUser.login.mobile_otp_expires > new Date()) {
+                        if(contact.mobile && !savedUser.login.mobile_verified && savedUser.login.mobile_otp && savedUser.login.mobile_otp_expires > new Date()) {
                             SmsService.sendVerifySms(savedUser);
                         }
                         logger.debug("updated existingUser",userProgramId,  convertUsertoString(savedUser));
@@ -687,7 +687,7 @@ export let populateUserFromSignUpForm = (is_mentor:boolean, userProgramId: strin
 };
 export let updateEducationFromSignUpForm = (edu: any, position: any, user: UserModel, done: Function) => {
     if(!edu || Object.keys(edu).length == 0 ) {
-        done(undefined, edu, position, user);
+        done(undefined, position, user);
     } else {
         logger.debug("existingUser for updationupdateEducationFromSignUpForm", edu, position, convertUsertoString(user));
         let searchQuery = {_id: user._id, "profile.education._id" : edu._id};
@@ -702,12 +702,12 @@ export let updateEducationFromSignUpForm = (edu: any, position: any, user: UserM
                     done(err);
                 } else {
                     logger.debug("updated updateEducationFromSignUpForm", convertUsertoString(savedUser));
-                    done(undefined, edu, position, savedUser);
+                    done(undefined, position, savedUser);
                 }
         });
     }
 };
-export let updatePositionFromSignUpForm = (edu: any, position: any, user: UserModel, done: Function) => {
+export let updatePositionFromSignUpForm = (position: any, user: UserModel, done: Function) => {
     if(!position || Object.keys(position).length == 0 ) {
         done(undefined, user);
     } else {

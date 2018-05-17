@@ -10,59 +10,12 @@ import { ImgStore, SurveyResponseModel } from "../models/shared-model";
 import * as fs from "fs";
 import * as MailService from "./mailService";
 import { SurveyModel } from "../models/survey-model";
+import { convertUsertoString } from "./utilities";
 const cloudinary = require('cloudinary');
 
 const logger = require("../config/logger").logger;
 
-export let roleAuthorization = function(roles: string[]) {
 
-    return function(req: Request, res: Response, next: NextFunction) {
-
-        const user = req.user;
-
-         // getting user data from token and not from DB
-        if ( roles.indexOf(user.role) > -1 ) {
-                return next();
-            }
-
-        res.status(401).json({error: "You are not authorized to view this content"});
-        return next("Unauthorized");
-
-        /*User.getUserById(user._id, function(err, foundUser){
-
-            if(err){
-                res.status(422).json({error: "No user found."});
-                return next(err);
-            }
-            logger.debug("foundUser "+ foundUser);
-            if(roles.indexOf(foundUser.role) > -1){
-                return next();
-            }
-
-            res.status(401).json({error: "You are not authorized to view this content"});
-            return next("Unauthorized");
-
-        });*/
-
-    };
-
-};
-export let recentlyLoggedIn = function() {
-
-    return function(req: Request, res: Response, next: NextFunction) {
-
-        const user = req.user;
-        // logged in less than hour ago
-        if ( user.issued > 3600 ) {
-            res.status(401).json({error: "You are not authorized to view this content"});
-            return next("Unauthorized");
-        } else  {
-            return next();
-        }
-
-    };
-
-};
 export let getSiteConfig= (user: UserModel, site: SiteModel): any => {
     let siteConfig: any; 
     if(!user || user.login.role == Roles.find((element) => element == "User")) {
@@ -80,34 +33,9 @@ export let getSiteConfig= (user: UserModel, site: SiteModel): any => {
 };
 
 export let createRandomOTP = () : number => {
-    return (100000 + Math.random() * 900000);
+    return (100000 + Math.floor(Math.random() * 900000));
 };
-export let getJWTtoken = function(user: UserModel) {
-    let userForToken: any;
-    userForToken =  {
-            _id: user._id,
-            name: user.fullName,
-            site: user.site,
-            verified: user.verified,
-            role: user.login.role
-        };
-    const token = jwt.sign(userForToken, process.env.JWT_SECRET, {
-        expiresIn: 604800 // 1 week
-    });
-    userForToken.site = user.site;
-    // userForToken.theme = site.profile.config.theme;
-    userForToken.score = user.logs.completion_score;
-    if(user.pic){
-        userForToken.thumbnail = user.pic.thumbnail;
-        userForToken.img_store = user.pic.img_store;
-    }
-    userForToken.expires = new Date( Date.now() + 604800 * 1000 );
 
-    return {
-        token:          token,
-        userForToken:   userForToken
-    };
-};
 
 export let extractHostname = (url: string) => {
     let hostname;
@@ -418,20 +346,29 @@ export let updateProfile = (newUser: UserModel, existingUser: UserModel, overwri
     });
 
 };
-export let updateUserForSignIn = (existingUser: UserModel, done: Function) => {
-    let newUser = <UserModel> {};
-    newUser._id= existingUser._id;
-    newUser.logs= existingUser.logs;
-    newUser.logs.last_login = new Date();
-    newUser.logs.last_active = new Date();
-    newUser.logs.online = true;
-    newUser.logs.available = true;
+export let updateUserForSignIn = (existingUser: UserModel, updateJson: any, done: Function) => {
+    let userUpdateJson: any =  {};
+    // userUpdateJson._id= existingUser._id;
+    // userUpdateJson.logs= existingUser.logs;
+    userUpdateJson["logs.last_login"] = new Date();
+    userUpdateJson["logs.last_active"] = new Date();
+    userUpdateJson["logs.online"] = true;
+    userUpdateJson["logs.available"] = true;
+    if(updateJson){
+        if(updateJson["login.email_verified"]){
+            userUpdateJson["login.email_verified"] = true;
+        } 
+        if(updateJson["login.mobile_verified"]){
+            userUpdateJson["login.mobile_verified"] = true;
+        }
+    }
     
-    User.findByIdAndUpdate(existingUser._id,newUser, {select: "site login sign profile pic programs logs", new: true}, (err: Error, savedUser: UserModel) => {
+    User.findByIdAndUpdate(existingUser._id, userUpdateJson, {select: "site login sign profile pic programs logs", new: true}, (err: Error, savedUser: UserModel) => {
         if ( err ) {
             logger.error("error in adding user: ", err);
             done(err);
         } else {
+            logger.debug("User Signed in", convertUsertoString(savedUser));
             // logger.debug("updated existingUser", savedUser);
             // MailService.sendVerifyMail(savedUser);
             done(undefined, savedUser);

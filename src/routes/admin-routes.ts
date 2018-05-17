@@ -1,6 +1,7 @@
 import * as express from "express";
 const router = express.Router();
-import * as passport from "passport";
+// import * as passport from "passport";
+const PassportAuth = require("../config/passport").default;
 import * as async from "async";
 
 import { default as User, UserModel, Roles } from "../models/user-model";
@@ -30,6 +31,7 @@ const upload = multer({ storage: storage });
 
 const logger = require("../config/logger").logger;
 
+
 router.get("/config",
     (req, res, next) => {
         Site.getSiteByEmailOrDomain(undefined, Authenticate.extractHostname(req.headers.origin + ""), (err: Error, existingSite: SiteModel) => {
@@ -46,10 +48,9 @@ router.get("/config",
 });
 
 
-
 router.post("/theme", 
-    passport.authenticate("jwt", {session: false}),
-    Authenticate.roleAuthorization([Roles.find((element) => element == "SuperAdmin"), Roles.find((element) => element == "SiteAdmin")]),
+    PassportAuth.authenticate(),
+    PassportAuth.roleAuthorization([Roles.find((element) => element == "SuperAdmin"), Roles.find((element) => element == "SiteAdmin")]),
     (req, res, next) => {
 
         const user= req.user;
@@ -73,8 +74,8 @@ router.post("/theme",
 });
 
 router.get("/sites", 
-    passport.authenticate("jwt", {session: false}),
-    Authenticate.roleAuthorization([Roles.find((element) => element == "SuperAdmin")]),
+    PassportAuth.authenticate(),
+    PassportAuth.roleAuthorization([Roles.find((element) => element == "SuperAdmin")]),
     (req, res, next) => {
 
         const parsedUrl = url.parse(req.url, true); // true to get query as object
@@ -102,8 +103,8 @@ router.get("/sites",
 
 
 router.post("/saveSite", 
-    passport.authenticate("jwt", {session: false}),
-    Authenticate.roleAuthorization([Roles.find((element) => element == "SuperAdmin")]),
+    PassportAuth.authenticate(),
+    PassportAuth.roleAuthorization([Roles.find((element) => element == "SuperAdmin")]),
     (req, res, next) => {
         let site = <SiteModel>req.body;
         logger.debug("site: ",site);
@@ -135,8 +136,8 @@ router.post("/saveSite",
 });
 
 router.get("/programs", 
-    passport.authenticate("jwt", {session: false}),
-    Authenticate.roleAuthorization([Roles.find((element) => element == "SuperAdmin"), Roles.find((element) => element == "SiteAdmin"), Roles.find((element) => element == "ProgramAdmin")]),
+    PassportAuth.authenticate(),
+    PassportAuth.roleAuthorization([Roles.find((element) => element == "SuperAdmin"), Roles.find((element) => element == "SiteAdmin"), Roles.find((element) => element == "ProgramAdmin")]),
     (req, res, next) => {
         const parsedUrl = url.parse(req.url, true); // true to get query as object
         const params = parsedUrl.query;
@@ -169,9 +170,9 @@ router.get("/programs",
 
 
 router.post("/saveProgram", 
-    passport.authenticate("jwt", {session: false}),
+    PassportAuth.authenticate(),
     upload.single('picture'),
-    Authenticate.roleAuthorization([Roles.find((element) => element == "SuperAdmin"), Roles.find((element) => element == "SiteAdmin"), Roles.find((element) => element == "ProgramAdmin")]),
+    PassportAuth.roleAuthorization([Roles.find((element) => element == "SuperAdmin"), Roles.find((element) => element == "SiteAdmin"), Roles.find((element) => element == "ProgramAdmin")]),
     (req, res, next) => {
 
 
@@ -214,7 +215,7 @@ router.post("/saveProgram",
 
 
 router.get("/survey", 
-    passport.authenticate("jwt", {session: false}),
+    PassportAuth.authenticate(),
     (req, res, next) => {
         const parsedUrl = url.parse(req.url, true); // true to get query as object
         const params = parsedUrl.query;
@@ -249,7 +250,7 @@ router.get("/survey",
 
 
 router.post("/saveSurvey", 
-    passport.authenticate("jwt", {session: false}),
+    PassportAuth.authenticate(),
     (req, res, next) => {
         let is_default:boolean;
         if(req.body.profile && req.body.profile.is_default) {
@@ -261,7 +262,7 @@ router.post("/saveSurvey",
             survey.profile.site=req.user.site;
         }
         if(req.user.role == Roles.find((element) => element == "User") && (survey.profile.category == SurveyCategory.find((element) => element == "Signup") || survey.profile.category == SurveyCategory.find((element) => element == "PostSignup") || survey.profile.category == SurveyCategory.find((element) => element == "Program Review"))) {
-            return res.status(401); 
+            return res.status(401).send({msg : "Incorrect role authorization"}); 
         }
         if(survey._id){
             let query: any = { "_id" : survey._id }
@@ -320,8 +321,8 @@ router.post("/saveSurvey",
 
 
 router.get("/adminList", 
-    passport.authenticate("jwt", {session: false}),
-    Authenticate.roleAuthorization([Roles.find((element) => element == "SuperAdmin"), Roles.find((element) => element == "SiteAdmin"), Roles.find((element) => element == "ProgramAdmin")]),
+    PassportAuth.authenticate(),
+    PassportAuth.roleAuthorization([Roles.find((element) => element == "SuperAdmin"), Roles.find((element) => element == "SiteAdmin"), Roles.find((element) => element == "ProgramAdmin")]),
     (req, res, next) => {
         const parsedUrl = url.parse(req.url, true); // true to get query as object
         const params = parsedUrl.query;
@@ -331,7 +332,7 @@ router.get("/adminList",
         }
         let programId = params.programId;
         if(!programId && req.user.role == Roles.find((element) => element != "SuperAdmin")) {
-            return res.status(401); 
+            return res.status(401).send({msg : "Incorrect role authorization"}); 
         }
         async.waterfall([
             async.constant(req.user, programId, siteId),
@@ -353,8 +354,8 @@ router.get("/adminList",
 
 
 router.post("/saveAdmins", 
-    passport.authenticate("jwt", {session: false}),
-    Authenticate.roleAuthorization([Roles.find((element) => element == "SuperAdmin"), Roles.find((element) => element == "SiteAdmin"), Roles.find((element) => element == "ProgramAdmin")]),
+    PassportAuth.authenticate(),
+    PassportAuth.roleAuthorization([Roles.find((element) => element == "SuperAdmin"), Roles.find((element) => element == "SiteAdmin"), Roles.find((element) => element == "ProgramAdmin")]),
     (req, res, next) => {
         let siteId = req.body.site
         if(req.user.role != Roles.find((element) => element == "SuperAdmin") || !siteId) {
@@ -384,8 +385,8 @@ router.post("/saveAdmins",
 });
 
 router.get("/transact1",
-    passport.authenticate("jwt", {session: false}),
-    Authenticate.recentlyLoggedIn(),
+    PassportAuth.authenticate(),
+    PassportAuth.recentlyLoggedIn(),
     (req, res, next) => {
     res.json({user : req.user});
 });
