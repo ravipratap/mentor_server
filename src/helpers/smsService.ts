@@ -37,7 +37,7 @@ let sendTextLocalSMS = (numbers: any, message: string, sender: string, options: 
     let validConfig = true;
 
     // replace defaults with passed in options
-    for (var key in options) {
+    for (let key in options) {
         if ((options.hasOwnProperty(key)) && (config.hasOwnProperty(key))) {
             config[key] = options[key];
         }
@@ -100,8 +100,8 @@ let sendTextLocalSMS = (numbers: any, message: string, sender: string, options: 
 
             if (response.status !== SUCCESS) return cb(new Error(ERR_API_ODD_STATUS + '(' + response.status + ')'));
 
-            cb(null, response);
-        })
+            cb(undefined, response);
+        });
     });
 
     // post the data
@@ -126,8 +126,8 @@ let makeAuthParameters = function () {
     return auth;
 };
 let makeOneStringFromAPIErrorArray = function (errorArray:any) {
-    var errorString = '';
-    for (var e = 0, el = errorArray.length; e < el; e++) {
+    let errorString = '';
+    for (let e = 0, el = errorArray.length; e < el; e++) {
         errorString += '(code ' + errorArray[e].code + ') ' + errorArray[e].message + ', ';
     }
     if (0 < errorString.length) {
@@ -162,11 +162,9 @@ let sendVerificationSms = (savedUser: UserModel, existingSite: SiteModel, callba
         logger.debug("sendVerifySms response: ", response);
         // update the current balance if the API returned the node
         if (response.balance) logger.debug("response.balance : ", response.balance);
-        if(callback) callback()
+        if(callback) callback();
     });
-    
-
 };
 export let notifyAdminsByMail =  (admins: UserModel[], savedSite: SiteModel, setUsers: UserModel[], setProgramAdminUsers: UserModel[], setSiteAdminUsers: UserModel[], newUsers: UserModel[], existingUsers: UserModel[], savedProgram: ProgramModel) => {
     logger.debug("sendV SMS to admins ");
-}
+};

@@ -1,7 +1,7 @@
 import * as mongoose  from "mongoose";
 import { SurveyResponseModel, SurveyResponseSchema, ImgStore, UserBriefModel, UserBriefSchema } from "./shared-model";
 
-export interface ActivityModel extends mongoose.Document {
+export type ActivityModel = mongoose.Document & {
     by: UserBriefModel,
     connection: string
 };
@@ -19,19 +19,19 @@ export default Activity;
 
 const options = { discriminatorKey : "kind"};
 
-export interface ChatActivityModel extends ActivityModel {
+export type ChatActivityModel = ActivityModel & {
     txt: string
-}
+};
 export const ChatActivitySchema = new mongoose.Schema({
     txt: String
 }, options);
 export const ChatActivity =  Activity.discriminator<ChatActivityModel>("Chat", ChatActivitySchema);
 
-export interface ImgActivityModel extends ActivityModel {
+export type ImgActivityModel = ActivityModel & {
     img_id: string,
     img_path: string,
     img_store: string
-}
+};
 export const ImgActivitySchema = new mongoose.Schema({
     img_id: mongoose.Schema.Types.ObjectId,
     img_path: String,
@@ -39,15 +39,15 @@ export const ImgActivitySchema = new mongoose.Schema({
 }, options);
 export const ImgActivity =  Activity.discriminator<ImgActivityModel>("Img", ImgActivitySchema);
 
-export interface CallActivityModel extends ActivityModel {
+export type CallActivityModel = ActivityModel & {
     secs: number
-}
+};
 export const CallActivitySchema = new mongoose.Schema({
     secs: Number
 }, options);
 export const CallActivity =  Activity.discriminator<CallActivityModel>("Call", CallActivitySchema);
 
-export interface MeetingActivityModel extends ActivityModel {
+export type MeetingActivityModel = ActivityModel & {
     when: Date,
     where: string,
     category: string,
@@ -57,8 +57,8 @@ export interface MeetingActivityModel extends ActivityModel {
         time: Date,
         accepted: boolean
     }]
-}
-export const MeetingCategory = [ "Telephonic", "Face to Face", "Web Conference", "Conference", "Chat Session", "Ask Me Anything"]
+};
+export const MeetingCategory = [ "Telephonic", "Face to Face", "Web Conference", "Conference", "Chat Session", "Ask Me Anything"];
 export const MeetingActivitySchema = new mongoose.Schema({
     when: Date,
     where: String,
@@ -73,12 +73,12 @@ export const MeetingActivitySchema = new mongoose.Schema({
 export const MeetingActivity =  Activity.discriminator<MeetingActivityModel>("Meeting", MeetingActivitySchema);
 
 
-export interface IntroActivityModel extends ActivityModel {
+export type IntroActivityModel = ActivityModel & {
     txt: string,
     linkedin: string,
     twitter: string,
     blog: string
-}
+};
 export const IntroActivitySchema = new mongoose.Schema({
     txt: String,
     linkedin: String,
@@ -87,11 +87,11 @@ export const IntroActivitySchema = new mongoose.Schema({
 }, options);
 export const IntroActivity =  Activity.discriminator<IntroActivityModel>("Intro", IntroActivitySchema);
 
-export interface TodoActivityModel extends ActivityModel {
+export type TodoActivityModel = ActivityModel & {
     task: string,
     status: string,
     assigned: UserBriefModel
-}
+};
 interface ITodoActivityModel extends mongoose.Model<TodoActivityModel> {
     getPendingTasks: (callback: Function) => any;
   }
@@ -106,14 +106,14 @@ TodoActivitySchema.statics.getPendingTasks = (callback: Function) => {
 };
 export const TodoActivity =  <ITodoActivityModel>Activity.discriminator<TodoActivityModel>("Todo", TodoActivitySchema);
 
-export interface GoalActivityModel extends ActivityModel {
+export type GoalActivityModel = ActivityModel & {
     task: string,
     status: string,
     progress: [{
         percentile: number,
         on: Date
     }]
-}
+};
 export const GoalActivitySchema = new mongoose.Schema({
     task: String,
     status: { type: String, enum: TaskStatus },
@@ -125,24 +125,24 @@ export const GoalActivitySchema = new mongoose.Schema({
 export const GoalActivity =  Activity.discriminator<GoalActivityModel>("Goal", GoalActivitySchema);
 
 
-export interface ReviewActivityModel extends ActivityModel, SurveyResponseModel {
-}
+export type ReviewActivityModel = ActivityModel & SurveyResponseModel & {
+};
 export const ReviewActivity =  Activity.discriminator<ReviewActivityModel>("Review", SurveyResponseSchema);
 
-export interface ProgramReviewActivityModel extends ActivityModel, SurveyResponseModel {
-}
+export type ProgramReviewActivityModel = ActivityModel & SurveyResponseModel & {
+};
 export const ProgramReviewActivity =  Activity.discriminator<ProgramReviewActivityModel>("ProgramReview", SurveyResponseSchema);
 
-export interface InterviewActivityModel extends ActivityModel, SurveyResponseModel {
-}
+export type InterviewActivityModel = ActivityModel & SurveyResponseModel & {
+};
 export const InterviewActivity =  Activity.discriminator<InterviewActivityModel>("Interview", SurveyResponseSchema);
 
-export interface BizPlanActivityModel extends ActivityModel, SurveyResponseModel {
-}
+export type BizPlanActivityModel = ActivityModel & SurveyResponseModel & {
+};
 export const BizPlanActivity =  Activity.discriminator<BizPlanActivityModel>("BizPlan", SurveyResponseSchema);
 
-export interface PollActivityModel extends ActivityModel, SurveyResponseModel {
-}
+export type PollActivityModel = ActivityModel & SurveyResponseModel & {
+};
 export const PollActivity =  Activity.discriminator<PollActivityModel>("Poll", SurveyResponseSchema);
 
 //test start

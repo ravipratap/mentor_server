@@ -41,7 +41,7 @@ export type SurveyModel = mongoose.Document & {
 export type UserSurveyModel = SurveyModel & {
     userProgramId?: string,
     programId?: string
-}
+};
 export const SurveyCategory = ["Interview", "Signup", "PostSignup", "Review", "Program Review", "Business Plan", "Poll", "Profile"];
 export const ScheduleFrequency = ["Not Scheduled", "Monthly", "Introduction", "Call Completion", "Post Meeting", "Goal/Plan Update", "Completion"];
 // Survey Schema

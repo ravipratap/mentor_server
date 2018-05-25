@@ -162,7 +162,7 @@ export let addUserDetails =  (siteId: string, emails: string[], mobiles: string[
             done(err);
         } else {
             let existingUsers: UserModel[] = allUsers.filter(user => (user.login.email && emails.indexOf(user.login.email) > -1) || (user.login.mobile && mobiles.indexOf(user.login.mobile) > -1));
-            let existingFullAdmins: UserModel[] = allUsers.filter(user => existingAdmins.find(admin => user._id.equals(admin.id)))
+            let existingFullAdmins: UserModel[] = allUsers.filter(user => existingAdmins.find(admin => user._id.equals(admin.id)));
             logger.debug("All Users", emails, mobiles, allUsers?allUsers.toString():allUsers);
             logger.debug("existingUsers", existingUsers?existingUsers.toString():existingUsers);
             logger.debug("existingFullAdmins", existingFullAdmins?existingFullAdmins.toString():existingFullAdmins);
@@ -196,7 +196,7 @@ export let addUserDetails =  (siteId: string, emails: string[], mobiles: string[
                         logger.error("error in getting admin details", err);
                         done(err);
                     } else {
-                        logger.debug("newUsers", newUsers && newUsers.length > 0 ? newUsers.toString(): newUsers)
+                        logger.debug("newUsers", newUsers && newUsers.length > 0 ? newUsers.toString(): newUsers);
                         done(undefined, setPossibleUsers, setProgramAdminUsers, setSiteAdminUsers, newUsers, existingUsers, existingProgram);
                     }  
                 });
@@ -217,14 +217,14 @@ export let keepExistingProgramAdmins =  (siteId: string, setPossibleUsers: UserM
             done(err);
         } else {
             if(otherPrograms && otherPrograms.length > 0){
-                let keepAdminList: any[] =[]
+                let keepAdminList: any[] =[];
                 otherPrograms.forEach((otherProgram) => {
-                    let keepAdmins = setPossibleUsers.filter( user => otherProgram.admins.find(admin=>user._id.equals(admin.id)) != undefined) 
+                    let keepAdmins = setPossibleUsers.filter( user => otherProgram.admins.find(admin=>user._id.equals(admin.id)) != undefined);
                     keepAdmins = keepAdmins.filter( user => keepAdminList.find(admin => user._id.equals(admin.id)) == undefined);
                     keepAdminList= keepAdminList.concat(keepAdmins);    
                 }); 
                 // logger.debug("otherPrograms", otherPrograms?otherPrograms.toString() : otherPrograms);
-                logger.debug("keep these users as Program Admins", keepAdminList? keepAdminList.toString(): keepAdminList)
+                logger.debug("keep these users as Program Admins", keepAdminList? keepAdminList.toString(): keepAdminList);
                 if(keepAdminList.length > 0){
                     setPossibleUsers  = setPossibleUsers.filter( user => keepAdminList.find(admin=>user._id.equals(admin.id)) == undefined);
                     let newProgramAdminUsers =  keepAdminList.filter( user => user.login.role == Roles.find((element) => element == "SiteAdmin"));
@@ -238,7 +238,7 @@ export let keepExistingProgramAdmins =  (siteId: string, setPossibleUsers: UserM
                     }
                 }
             }
-            logger.debug("setUsers updated from other programs", setPossibleUsers? setPossibleUsers.toString(): setPossibleUsers)
+            logger.debug("setUsers updated from other programs", setPossibleUsers? setPossibleUsers.toString(): setPossibleUsers);
             done(undefined, setPossibleUsers, setProgramAdminUsers, setSiteAdminUsers, newUsers, existingUsers, existingProgram);
         }  
     });
@@ -252,7 +252,7 @@ export let setSiteAdmins =  (setUsers: UserModel[], setProgramAdminUsers: UserMo
                 logger.error("error in setting site admin role", err);
                 done(err);
             } else {
-                logger.debug("newSiteAdminUsers done:", newSiteAdminUsers? newSiteAdminUsers.toString(): newSiteAdminUsers)
+                logger.debug("newSiteAdminUsers done:", newSiteAdminUsers? newSiteAdminUsers.toString(): newSiteAdminUsers);
                 done(undefined, setUsers, setProgramAdminUsers, newSiteAdminUsers, newUsers, existingUsers, existingProgram);
             }  
         });
@@ -268,7 +268,7 @@ export let setProgramAdmins =  (setUsers: UserModel[], setProgramAdminUsers: Use
                 logger.error("error in setting programs admin role", err);
                 done(err);
             } else {
-                logger.debug("setProgramAdmins done:", raw)
+                logger.debug("setProgramAdmins done:", raw);
                 done(undefined, setUsers, setProgramAdminUsers, setSiteAdminUsers, newUsers, existingUsers, existingProgram);
             }  
         });
@@ -284,7 +284,7 @@ export let resetAsUsers =  (setUsers: UserModel[], setProgramAdminUsers: UserMod
                 logger.error("error in setting programs admin role", err);
                 done(err);
             } else {
-                logger.debug("resetAsUsers ", raw)
+                logger.debug("resetAsUsers ", raw);
                 done(undefined, setUsers, setProgramAdminUsers, setSiteAdminUsers, newUsers, existingUsers, existingProgram);
             }  
         });

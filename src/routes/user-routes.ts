@@ -24,12 +24,12 @@ import { JSONunflatten, convertUsertoString } from "../helpers/utilities";
 import passport from "../config/passport";
 
 const UPLOAD_PATH = 'uploads';
-var storage = multer.diskStorage({
+const storage = multer.diskStorage({
     destination: function (req, file, cb) {
-        cb(null, UPLOAD_PATH)
+        cb(undefined, UPLOAD_PATH);
     },
     filename: function (req, file, cb) {
-        cb(null, file.fieldname + '-' + Date.now())
+        cb(undefined, file.fieldname + '-' + Date.now());
     }
 });
 const upload = multer({ storage: storage });
@@ -97,7 +97,7 @@ router.post("/signup", (req, res, next) => {
                     ],  (err, result:any) => {
                         logger.debug("create result", err, result?result.toString():result);
                         if (err){ 
-                            return res.json({success : false});; 
+                            return res.json({success : false}); 
                         } else { 
                             const tokenData = PassportAuth.getJWTtoken(result.user);
                             return res.json({
@@ -140,12 +140,12 @@ router.post("/social", (req, res, next) => {
                  action = "rejected";
              } else if(existingUser && existingUser.login.email_verified){
                  action = "decline";
-                 logger.debug("req.body", req.body)
-                 if(req.body.login.email_verified) action = "update"
+                 logger.debug("req.body", req.body);
+                 if(req.body.login.email_verified) action = "update";
              } else if (existingUser && !existingUser.login.email_verified){
                  action = "overwrite";
              }
-             logger.debug("action", action)
+             logger.debug("action", action);
              switch(action){
                  case "rejected": {
                      return res.json({success: false, msg: "Permission to sign in is denied. Please contact support."});
@@ -154,7 +154,7 @@ router.post("/social", (req, res, next) => {
                      return res.json({success: false, msg: "User exists with email address. Please sign in with email"});
                  }
                  case "update": { 
-                    let newImage:ImageModel
+                    let newImage:ImageModel;
                     if(!(existingUser.pic && existingUser.pic.img_id) && !req.body.picture.is_silhouette){ // update Pic
                         newImage= <ImageModel>{};
                         newImage.img_path= req.body.picture.url + (req.body.picture.provider == "GOOGLE" ? "?sz=150" : "");
@@ -170,7 +170,7 @@ router.post("/social", (req, res, next) => {
                     ],  (err, result:any) => {
                         logger.debug("result", err, result?result.toString():result);
                         if (err) { 
-                            return res.json({success : false});; 
+                            return res.json({success : false}); 
                         } else { 
                             const tokenData = PassportAuth.getJWTtoken(result.user);
                             return res.json({
@@ -188,7 +188,7 @@ router.post("/social", (req, res, next) => {
                     break; 
                  }
                  case "overwrite": { 
-                    let newImage:ImageModel
+                    let newImage:ImageModel;
                     if(!req.body.picture.is_silhouette){
                         newImage= <ImageModel>{};
                         newImage.img_path= req.body.picture.url + (req.body.picture.provider == "GOOGLE" ? "?sz=150" : "");
@@ -204,7 +204,7 @@ router.post("/social", (req, res, next) => {
                     ],  (err, result:any) => {
                         logger.debug("result", err, result?result.toString():result);
                         if (err) { 
-                            return res.json({success : false});; 
+                            return res.json({success : false}); 
                         } else { 
                             const tokenData = PassportAuth.getJWTtoken(result.user);
                             return res.json({
@@ -222,7 +222,7 @@ router.post("/social", (req, res, next) => {
                     break; 
                  }
                  case "create": { 
-                    let newImage:ImageModel
+                    let newImage:ImageModel;
                     if(!req.body.picture.is_silhouette){
                         newImage= <ImageModel>{};
                         newImage.img_path= req.body.picture.url + (req.body.picture.provider == "GOOGLE" ? "?sz=150" : "");
@@ -238,7 +238,7 @@ router.post("/social", (req, res, next) => {
                     ],  (err, result:any) => {
                         logger.debug("result", err, result?result.toString():result);
                         if (err) { 
-                            return res.json({success : false});; 
+                            return res.json({success : false}); 
                         } else { 
                             const tokenData = PassportAuth.getJWTtoken(result.user);
                             return res.json({
@@ -264,7 +264,7 @@ router.get("/mailOpen", (req, res, next) => {
     const parsedUrl = url.parse(req.url, true); // true to get query as object
     const params = parsedUrl.query;
     logger.debug("Mail Opened", params);
-    var buf = new Buffer([
+    const buf = new Buffer([
         0x47, 0x49, 0x46, 0x38, 0x39, 0x61, 0x01, 0x00, 0x01, 0x00,
         0x80, 0x00, 0x00, 0xff, 0xff, 0xff, 0x00, 0x00, 0x00, 0x2c,
         0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0x02,
@@ -403,8 +403,8 @@ router.post('/signUpForm', PassportAuth.authenticate(), upload.single('picture')
                 SurveyServices.updateEducationFromSignUpForm,
                 SurveyServices.updatePositionFromSignUpForm
             ],  (err, result:any) => {
-                if (err)
-                { 
+                
+                if (err) { 
                     logger.error("Error in updating profile", err);
                     res.json({success : false, msg: (err as any).msg });
                 } else {
@@ -414,9 +414,9 @@ router.post('/signUpForm', PassportAuth.authenticate(), upload.single('picture')
                     let mobile_verified: boolean = result.login.mobile_verified;
                     if(surveyResponse.answers.length == 1 && (surveyResponse.answers[0].category=="Position" || surveyResponse.answers[0].category=="Education")){
                         if(surveyResponse.answers[0].category=="Position"){
-                            aid = result.profile.positions[result.profile.positions.length - 1]._id
+                            aid = result.profile.positions[result.profile.positions.length - 1]._id;
                         } else {
-                            aid = result.profile.education[result.profile.education.length - 1]._id
+                            aid = result.profile.education[result.profile.education.length - 1]._id;
                         }
                     }
                     logger.debug("aid", JSON.stringify(aid));
@@ -444,9 +444,9 @@ router.post('/signUpForm', PassportAuth.authenticate(), upload.single('picture')
                     SurveyServices.updatePositionFromSignUpForm,
                     async.apply(SurveyServices.populateSignUpForm, category == SurveyCategory.find((element) => element == "Signup"), existingSite, undefined) 
                 ],  (err, result:any) => {
-                    if (err)
-                    { 
-                        res.json({success : false});; 
+                    
+                    if (err) { 
+                        res.json({success : false}); 
                     } else {
                         logger.debug("updateProgram result", result?result.toString():undefined);
                         res.json({
@@ -618,7 +618,7 @@ router.get("/profile",PassportAuth.authenticate(), (req, res, next) => {
         logger.debug(userFromDb?userFromDb.toString():userFromDb);
         if(userFromDb.programs && userFromDb.programs.length > 0){
             let surveyIds: string[] = [];
-            let searchQuery:any = {}
+            let searchQuery:any = {};
             userFromDb.programs.forEach(program => {
                 if(programId){
                     if(program.program.toString() == programId){
@@ -667,9 +667,9 @@ router.post('/profilePicture', PassportAuth.authenticate(), upload.single('pictu
             Authenticate.saveImage,
             async.apply(Authenticate.updateUserProfilePic, req.user, "pic sign")
         ],  (err, result:any) => {
-            if (err)
-            { 
-                res.json({success : false});; 
+            
+            if (err) { 
+                res.json({success : false}); 
             } else {
                 // logger.debug("result.img.thumbnail", result.img.thumbnail, result.img);
                 res.json({

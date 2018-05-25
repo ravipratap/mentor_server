@@ -153,8 +153,8 @@ export let updateUserProfilePic = (user: any, projection: string,  savedImage: I
             thumbnail: savedImage.thumbnail_path,
             img_path: savedImage.img_path
         }
-    } 
-    let query: any = { "_id" : user._id }
+    }; 
+    let query: any = { "_id" : user._id };
     User.findOneAndUpdate(query, userWithPic, {select: projection, new: true}, ( err: Error, userFromDb: UserModel ) => {
         if ( err ) {
             logger.error("error on saving user",err);
@@ -187,14 +187,14 @@ export let createProfile = (newUser: UserModel, existingSite: SiteModel, savedIm
         available: true,
         status: ApplicationStatus.find((element) => element == "Pending"),
         status_update: new Date()
-    }
+    };
     if(savedImage){ 
         newUser.pic = {
             img_id: savedImage._id,
             img_store: savedImage.store,
             thumbnail: savedImage.thumbnail_path,
             img_path: savedImage.img_path
-        }
+        };
     }
     newUser.site = existingSite._id;
     newUser.login.role = Roles.find((element) => element == "User");
@@ -216,7 +216,7 @@ export let createProfile = (newUser: UserModel, existingSite: SiteModel, savedIm
             } else {
                 done(undefined, savedUser);
             }
-        })
+        });
     } else {
         new User(newUser).save((err: Error, savedUser: UserModel) => {
             if ( err ) {
@@ -231,7 +231,7 @@ export let createProfile = (newUser: UserModel, existingSite: SiteModel, savedIm
 };
 export let getProfileCompletionScore = (existingUser: UserModel) => {
     return 1;
-}
+};
 //db.users.deleteOne({_id: "5ac743ff77d5cf5922b2433e"})
 export let updateProfile = (newUser: UserModel, existingUser: UserModel, overwrite: boolean,  savedImage: ImageModel, done: Function) => {
     let mobileOTP: number;
@@ -254,7 +254,7 @@ export let updateProfile = (newUser: UserModel, existingUser: UserModel, overwri
             available: true,
             status: ApplicationStatus.find((element) => element == "Pending"),
             status_update: new Date()
-        }  
+        }  ;
     } else {
         let sign= existingUser.sign;
         if(!existingUser.sign.title && newUser.sign.title) sign.title = newUser.sign.title;
@@ -267,7 +267,7 @@ export let updateProfile = (newUser: UserModel, existingUser: UserModel, overwri
         if(existingUser.profile){
             let profile:any = existingUser.profile;
             if((!existingUser.profile.positions || existingUser.profile.positions.length < 1) && newUser.profile && newUser.profile.positions){
-                profile.positions = newUser.profile.positions 
+                profile.positions = newUser.profile.positions;
             }
             if(newUser.profile){
                 if(!existingUser.profile.intro) profile.intro = {};
@@ -279,7 +279,7 @@ export let updateProfile = (newUser: UserModel, existingUser: UserModel, overwri
             } 
             newUser.profile = profile;
         }
-        let login = existingUser.login
+        let login = existingUser.login;
         // logger.debug("login", existingUser.login.role, login);
         if(newUser.login.linkedin) login.linkedin = newUser.login.linkedin;
         if(newUser.login.facebook) login.facebook = newUser.login.facebook;
@@ -316,7 +316,7 @@ export let updateProfile = (newUser: UserModel, existingUser: UserModel, overwri
             img_store: savedImage.store,
             thumbnail: savedImage.thumbnail_path,
             img_path: savedImage.img_path
-        }
+        };
     } else if(existingUser.pic && !newUser.pic){
         newUser.pic = existingUser.pic;
     } else {

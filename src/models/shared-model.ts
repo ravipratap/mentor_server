@@ -18,7 +18,7 @@ export const UserBriefSchema = new mongoose.Schema({
         img_store: { type: String, enum: ImgStore }
     }
 });
-export interface SurveyResponseModel extends mongoose.Document {    
+export type SurveyResponseModel =  mongoose.Document & {    
     survey: string,
     is_mentor?: boolean,
     role?: string,

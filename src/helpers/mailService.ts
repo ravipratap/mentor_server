@@ -57,4 +57,4 @@ let sendVerificationMail = (savedUser: UserModel, existingSite: SiteModel, callb
 
 export let notifyAdminsByMail =  (admins: UserModel[], savedSite: SiteModel, setUsers: UserModel[], setProgramAdminUsers: UserModel[], setSiteAdminUsers: UserModel[], newUsers: UserModel[], existingUsers: UserModel[], savedProgram: ProgramModel) => {
     logger.debug("sendV SMS to admins ");
-}
+};

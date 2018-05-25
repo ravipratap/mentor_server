@@ -17,18 +17,19 @@ export let convertUsertoString =(savedUser: any) => {
 
 
 export let JSONflatten = (data:any) => {
-    var result:any = {};
+    let result:any = {};
     function recurse (cur:any, prop:string) {
         if (Object(cur) !== cur) {
             result[prop] = cur;
         } else if (Array.isArray(cur)) {
-             for(var i=0, l=cur.length; i<l; i++)
+            let l=cur.length;
+             for(let i=0; i<l; i++)
                  recurse(cur[i], prop ? prop+"."+i : ""+i);
             if (l == 0)
                 result[prop] = [];
         } else {
-            var isEmpty = true;
-            for (var p in cur) {
+            let isEmpty = true;
+            for (let p in cur) {
                 isEmpty = false;
                 recurse(cur[p], prop ? prop+"."+p : p);
             }
@@ -46,7 +47,7 @@ export let JSONunflatten = (data:any) => {
     for(let p in data) {
         cur = result, prop = "";
         parts = p.split(".");
-        for(var i=0; i<parts.length; i++) {
+        for(let i=0; i<parts.length; i++) {
             idx = !isNaN(parseInt(parts[i]));
             cur = cur[prop] || (cur[prop] = (idx ? [] : {}));
             prop = parts[i];

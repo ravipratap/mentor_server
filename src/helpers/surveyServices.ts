@@ -8,7 +8,7 @@ import * as MailService from "./mailService";
 import * as SmsService from "./smsService";
 import { convertUsertoString } from "./utilities";
 import  * as Authenticate  from "./authenticate";
-import { returnStatement } from "babel-types";
+// import { returnStatement } from "babel-types";
 const logger = require("../config/logger").logger;
 
 export let populateSignUpForm =  ( preSignup: boolean, existingSite: SiteModel, specificSurveyId: string, savedUser: UserModel, done: Function) => {
@@ -39,9 +39,9 @@ export let populateSignUpForm =  ( preSignup: boolean, existingSite: SiteModel, 
             if(!fileteredProgramData){
                 let surveyprogram: any;
                 if( preSignup && existingSite.signup_pre && existingSite.signup_pre.length > 0 ) {
-                    surveyprogram = existingSite.signup_pre.find(element => savedUser.programs.find( programData => programData.signup_pre.survey.toString() == element.survey.toString()) == undefined)
+                    surveyprogram = existingSite.signup_pre.find(element => savedUser.programs.find( programData => programData.signup_pre.survey.toString() == element.survey.toString()) == undefined);
                 } else if( !preSignup && existingSite.signup_post && existingSite.signup_post.length > 0 ) {
-                    surveyprogram = existingSite.signup_post.find(element => savedUser.programs.find( programData => programData.signup_post.survey.toString() == element.survey.toString()) == undefined)
+                    surveyprogram = existingSite.signup_post.find(element => savedUser.programs.find( programData => programData.signup_post.survey.toString() == element.survey.toString()) == undefined);
                 }
                 if(surveyprogram) {
                     surveyId= surveyprogram.survey;
@@ -139,7 +139,7 @@ let sortEducationAndExperience = (savedUser: UserModel) => {
         savedUser.profile.education.sort((a,b)=>{
             if(!b.startYear || !a.startYear){
                 if(b.startYear){
-                    return 1
+                    return 1;
                 } else {
                     return -1;
                 }
@@ -147,7 +147,7 @@ let sortEducationAndExperience = (savedUser: UserModel) => {
                 if(b.endYear && a.endYear) {
                   return a.endYear - b.endYear;
                 } else if(b.endYear){
-                    return -1
+                    return -1;
                 } else {
                     return 1;
                 }
@@ -160,27 +160,27 @@ let sortEducationAndExperience = (savedUser: UserModel) => {
         savedUser.profile.positions.sort((a,b)=>{
             if(!b.startDate || !a.startDate){
                 if(b.startDate){
-                    return 1
+                    return 1;
                 } else {
                     return -1;
                 }
             } else if(b.startDate.year == a.startDate.year && b.startDate.month == a.startDate.month){
                 if(b.endDate && a.endDate) {           
                     if(b.endDate.year == a.endDate.year) {
-                        return a.endDate.month - a.endDate.month
+                        return a.endDate.month - a.endDate.month;
                     } else {
-                        return a.endDate.year - a.endDate.year
+                        return a.endDate.year - a.endDate.year;
                     }
                 } else if(b.endDate){
-                    return -1
+                    return -1;
                 } else {
                     return 1;
                 }
             } else {
                 if(b.startDate.year == a.startDate.year) {
-                    return a.startDate.month - a.startDate.month
+                    return a.startDate.month - a.startDate.month;
                 } else {
-                    return a.startDate.year - a.startDate.year
+                    return a.startDate.year - a.startDate.year;
                 }
             }
         });
@@ -366,7 +366,7 @@ export let populateContactFromSignUpForm = (category: string, userFromToken: any
     let answers =surveyResponse.answers.filter(element => element.answer && element.category == "Contact");
     let answer = answers && answers.length>0? answers[0]: undefined;
     if(answer){
-        let contact:any = {}
+        let contact:any = {};
         let searchQuery:any = [{_id: userFromToken._id}]; 
         if(answer.answer.email) searchQuery.push({"login.email": answer.answer.email}); 
         if(answer.answer.mobile) searchQuery.push({"login.mobile": answer.answer.mobile});
@@ -435,7 +435,7 @@ export let populateContactFromSignUpForm = (category: string, userFromToken: any
         });
 
     } else {
-        done(undefined, undefined, category, userFromToken, surveyResponse, savedImage)
+        done(undefined, undefined, category, userFromToken, surveyResponse, savedImage);
     }
 };
 export let populateUserFromSignUpForm = (role:string, is_mentor:boolean, userProgramId: string, programId: string, contact:any, category: string, userFromToken: any, surveyResponse: SurveyResponseModel, savedImage: ImageModel, done: Function) => {
@@ -530,7 +530,7 @@ export let populateUserFromSignUpForm = (role:string, is_mentor:boolean, userPro
                             let edu: any = {
                                 school:  { name: answer.answer.school },
                                 startYear: answer.answer.startYear
-                            }
+                            };
                             if(answer.answer.degree){
                                 edu.degree= answer.answer.degree.substr(0,answer.answer.lastIndexOf('-') - 1);
                                 edu.fieldOfStudy= answer.answer.degree.substr(0,answer.answer.lastIndexOf(',') + 2);
@@ -544,7 +544,7 @@ export let populateUserFromSignUpForm = (role:string, is_mentor:boolean, userPro
                             let position: any = {
                                 company: {name: answer.answer.company, industry: answer.answer.industry },
                                 title: answer.answer.designation
-                            }
+                            };
                             if(answer.answer.aid){
                                 addPosition = false;
                                 position._id = answer.answer.aid; 
@@ -561,7 +561,7 @@ export let populateUserFromSignUpForm = (role:string, is_mentor:boolean, userPro
                             is_current: answer.answer.is_current,
                             startDate: answer.answer.startDate,
                             endDate: answer.answer.endDate
-                        }
+                        };
                         if(answer.answer.location){
                             position.location = {
                                 name: answer.answer.location.substr(0,answer.answer.location.lastIndexOf(',')),
@@ -594,7 +594,7 @@ export let populateUserFromSignUpForm = (role:string, is_mentor:boolean, userPro
                             startYear: answer.answer.startYear,
                             endYear: answer.answer.endYear,
                             is_student: answer.answer.is_student
-                        }
+                        };
                         if(answer.answer.degree){
                             edu.degree= answer.answer.degree.substr(0,answer.answer.degree.lastIndexOf('-') - 1);
                             edu.fieldOfStudy= answer.answer.degree.substr(answer.answer.degree.lastIndexOf('-') + 2);
@@ -748,12 +748,12 @@ let getProfileFieldsAsSurvey = (user: UserModel, categories: string[], self:bool
             navTitle: navTitle ? navTitle : "Update profile",
         },
         questions: []
-    }
+    };
     categories.forEach((category, index) => {
         let question: any = {
             order: index,
             category: category
-        }
+        };  
         if(mandatory && mandatory.length > 0 && mandatory[index]) question.mandatory = mandatory[index];
         switch(category){
             case "Gender":
@@ -807,7 +807,7 @@ export let getProfileAsSurvey = (user: UserModel, surveys: SurveyModel[], self:b
     // education?: EditableSurveyData,
         personal_profile: getProfileFieldsAsSurvey(user, ["Age", "Gender", "ExpInYrs"], self),
         professional_profile: getProfileFieldsAsSurvey(user, ["Skills", "Function", "Job Level", "Industry"], self, "Update contact", [true])
-    }
+    };
     if(self) profileAsSurveys.contact = getProfileFieldsAsSurvey(user, ["Contact"], self, "Update contact", [true]);
     if(user.profile.positions && user.profile.positions.length>0) {
         let categories: string[] = [];
@@ -818,7 +818,7 @@ export let getProfileAsSurvey = (user: UserModel, surveys: SurveyModel[], self:b
         });
         profileAsSurveys.positions = getProfileFieldsAsSurvey(user, categories, self, "Update position", mandatory);
     }
-    profileAsSurveys.addPosition = getProfileFieldsAsSurvey(user, ["Position"], self, "Update position", [true], user.profile.positions.length)
+    profileAsSurveys.addPosition = getProfileFieldsAsSurvey(user, ["Position"], self, "Update position", [true], user.profile.positions.length);
     if(user.profile.education && user.profile.education.length>0) {
         let categories: string[] = [];
         let mandatory: boolean[] = [];
@@ -838,13 +838,13 @@ export let getProfileAsSurvey = (user: UserModel, surveys: SurveyModel[], self:b
             let nonProfileQuestions =newSurvey ? newSurvey.questions.filter(element => profileCategories.find(elem => elem == element.category) === undefined):undefined;
             if(newSurvey && nonProfileQuestions && nonProfileQuestions.length > 0) {
                 if(program.role) nonProfileQuestions = nonProfileQuestions.filter(element => element.roles.find(elem => elem == program.role) !== undefined);
-                logger.debug("nonProfileQuestions", program.role, nonProfileQuestions.toString())
+                logger.debug("nonProfileQuestions", program.role, nonProfileQuestions.toString());
                 if(nonProfileQuestions && nonProfileQuestions.length > 0) {
                     let userSurvey =  <UserSurveyModel>JSON.parse(JSON.stringify(newSurvey));
                     userSurvey.userProgramId = (program as any)._id;
                     userSurvey.programId = program.program;
                     let filteredAnswers = program.signup_pre.answers.filter(element => nonProfileQuestions.find(elem => (elem as any)._id.equals(element.qid)) !== undefined);
-                    logger.debug("userSurvey", userSurvey)
+                    logger.debug("userSurvey", userSurvey);
                     if(program.role) program.signup_pre.role = program.role;
                     if(program.is_mentor) program.signup_pre.is_mentor = program.is_mentor;
                     profileAsSurveys.programs.push({survey: userSurvey, surveyResponse: program.signup_pre, filteredAnswers: filteredAnswers});

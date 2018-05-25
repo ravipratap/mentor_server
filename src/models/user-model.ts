@@ -471,26 +471,26 @@ userSchema.statics.getUserByMobileOrEmail = (email: string, mobile: string, site
 userSchema.statics.addUser = (newUser: UserModel, update:boolean, callback: any) => {
     bcrypt.genSalt(BCRYPT_SALT_LEN, (err, salt) => {
         if ( err ) {
-            logger.debug("error in bcrypt salth generation", err)
+            logger.debug("error in bcrypt salth generation", err);
             throw err;
         }
         if(newUser.pass){
             bcrypt.hash(newUser.pass.password, salt, undefined, (err, hash) => {
                 if ( err ) {
-                    logger.debug("error in bcrypt hashing", err)
+                    logger.debug("error in bcrypt hashing", err);
                     throw err;
                 }
                 newUser.pass.password = hash;
                 logger.debug ("bcrypt hash password is " + hash);
                 if(update){
-                    User.findByIdAndUpdate(newUser._id, newUser, {select: "site login sign profile pic programs logs", new: true}, callback)
+                    User.findByIdAndUpdate(newUser._id, newUser, {select: "site login sign profile pic programs logs", new: true}, callback);
                 } else {
                     newUser.save(callback);
                 }
             });
         } else {
             if(update){
-                User.findByIdAndUpdate(newUser._id, newUser, {select: "site login sign profile pic programs logs", new: true}, callback)
+                User.findByIdAndUpdate(newUser._id, newUser, {select: "site login sign profile pic programs logs", new: true}, callback);
             } else {
                 newUser.save(callback);
             }
@@ -511,12 +511,12 @@ userSchema.statics.comparePassword = ( candidatePassword: string, hash: string, 
 const User = mongoose.model< UserModel, IUserModel >("User", userSchema);
 export default User;
 
-export interface EditableSurveyData {
-    survey: UserSurveyModel;
-    surveyResponse?: SurveyResponseModel;
-    filteredAnswers?: any[];
-}
-export interface ProfileAsSurveys {
+export type EditableSurveyData = {
+    survey: UserSurveyModel,
+    surveyResponse?: SurveyResponseModel,
+    filteredAnswers?: any[]
+};
+export type ProfileAsSurveys = {
     _id: string,
     site: string,
     programs?: EditableSurveyData[],
@@ -529,5 +529,5 @@ export interface ProfileAsSurveys {
     education?: EditableSurveyData,
     addEducation?: EditableSurveyData,
     personal_profile?: EditableSurveyData,
-    professional_profile?: EditableSurveyData,
-}
+    professional_profile?: EditableSurveyData
+};

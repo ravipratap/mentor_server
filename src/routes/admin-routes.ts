@@ -19,12 +19,12 @@ import { ImgStore } from "../models/shared-model";
 import { ImageModel, ImgType } from "../models/image-model";
 import { JSONunflatten } from "../helpers/utilities";
 const UPLOAD_PATH = 'uploads';
-var storage = multer.diskStorage({
+const storage = multer.diskStorage({
     destination: function (req, file, cb) {
-        cb(null, UPLOAD_PATH)
+        cb(undefined, UPLOAD_PATH);
     },
     filename: function (req, file, cb) {
-        cb(null, file.fieldname + '-' + Date.now())
+        cb(undefined, file.fieldname + '-' + Date.now());
     }
 });
 const upload = multer({ storage: storage });
@@ -85,7 +85,7 @@ router.get("/sites",
         let query: any = {};
         skip= (<number>params.page) * pageSize;
         if(params.search) {
-            query["profile.company"]={ $regex : new RegExp("^" + params.search.toLowerCase(), "i") } 
+            query["profile.company"]={ $regex : new RegExp("^" + params.search.toLowerCase(), "i") }; 
         }
         // logger.debug("params: ", JSON.stringify(params));
         // logger.debug("query: ", query);
@@ -153,7 +153,7 @@ router.get("/programs",
         }
         skip= (<number>params.page) * pageSize;
         if(params.search) {
-            query["profile.name"]={ $regex : new RegExp("^" + params.search.toLowerCase(), "i") } 
+            query["profile.name"]={ $regex : new RegExp("^" + params.search.toLowerCase(), "i") };
         }
         logger.debug("params: ", JSON.stringify(params));
         logger.debug("query: ", query);
@@ -200,9 +200,9 @@ router.post("/saveProgram",
             Authenticate.saveImage,
             async.apply(AdminServices.updateProgram, req.user, program, defaultChanged)
         ],  (err, result:any) => {
-            if (err)
-            { 
-                res.json({success : false});; 
+
+            if (err) { 
+                res.json({success : false});
             } else {
                 logger.debug("updateProgram result", result?result.toString():result);
                 res.json({
@@ -265,7 +265,7 @@ router.post("/saveSurvey",
             return res.status(401).send({msg : "Incorrect role authorization"}); 
         }
         if(survey._id){
-            let query: any = { "_id" : survey._id }
+            let query: any = { "_id" : survey._id };
             logger.debug("query: ", query);
             Survey.findOneAndUpdate(query, survey, {select: "questions profile", new: true}, (err: Error, savedSurvey: SurveyModel) => {
                 if ( err ) {
@@ -301,7 +301,7 @@ router.post("/saveSurvey",
                                     logger.error("error in rolling back  survey save: ", error);
                                 }
                                 return next(error);
-                            })
+                            });
                         }
                         logger.debug("site saved for survey", savedSite? savedSite.toString(): undefined);
                         return res.json({
@@ -339,9 +339,9 @@ router.get("/adminList",
             AdminServices.getAdmins,
             AdminServices.fillAdminDetails
         ],  (err, result:any) => {
-            if (err)
-            { 
-                res.json({success : false});; 
+            
+            if (err) { 
+                res.json({success : false});
             } else {
                 // logger.debug("result.img.thumbnail", result.img.thumbnail, result.img);
                 res.json({
@@ -357,7 +357,7 @@ router.post("/saveAdmins",
     PassportAuth.authenticate(),
     PassportAuth.roleAuthorization([Roles.find((element) => element == "SuperAdmin"), Roles.find((element) => element == "SiteAdmin"), Roles.find((element) => element == "ProgramAdmin")]),
     (req, res, next) => {
-        let siteId = req.body.site
+        let siteId = req.body.site;
         if(req.user.role != Roles.find((element) => element == "SuperAdmin") || !siteId) {
             siteId = req.user.site;
         }
@@ -371,9 +371,9 @@ router.post("/saveAdmins",
             AdminServices.resetAsUsers,
             async.apply(AdminServices.setAllAdmins, siteId)
         ],  (err, result:any) => {
-            if (err)
-            { 
-                res.json({success : false});; 
+            if (err) { 
+
+                res.json({success : false});
             } else {
                 // logger.debug("result.img.thumbnail", result.img.thumbnail, result.img);
                 res.json({

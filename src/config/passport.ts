@@ -99,7 +99,7 @@ class PassportAuth {
         // logger.debug("process.env.JWT_SECRET", process.env.JWT_SECRET, "token", token);
         let token: string;
         if(authorization){
-            let parts= authorization.split(" ");
+            const parts= authorization.split(" ");
             if(parts && parts.length==2){
                 token = parts[1];
             }
