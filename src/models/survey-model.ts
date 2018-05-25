@@ -24,6 +24,7 @@ export type SurveyModel = mongoose.Document & {
         mandatory: boolean,
         other_choice: boolean,
         placeholder: string,
+        roles: [string],
         choices: [{
             text: string,
             votes: [string],
@@ -38,7 +39,8 @@ export type SurveyModel = mongoose.Document & {
   };
 
 export type UserSurveyModel = SurveyModel & {
-    userProgramId?: string
+    userProgramId?: string,
+    programId?: string
 }
 export const SurveyCategory = ["Interview", "Signup", "PostSignup", "Review", "Program Review", "Business Plan", "Poll", "Profile"];
 export const ScheduleFrequency = ["Not Scheduled", "Monthly", "Introduction", "Call Completion", "Post Meeting", "Goal/Plan Update", "Completion"];
@@ -66,6 +68,7 @@ export const SurveySchema = new mongoose.Schema({
         mandatory: Boolean,
         other_choice: Boolean,
         placeholder: String,
+        roles: [String],
         choices: [{
             _id: false,
             text: String,

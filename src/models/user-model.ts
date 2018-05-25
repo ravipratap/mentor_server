@@ -4,7 +4,7 @@ import * as bcrypt from "bcrypt-nodejs";
 // import * as crypto from "crypto";
 import * as mongoose from "mongoose";
 import { UserBriefModel, SurveyResponseModel, ImgStore, SurveyResponseSchema, UserBriefSchema } from "./shared-model";
-import { SurveyModel } from "./survey-model";
+import { SurveyModel, UserSurveyModel } from "./survey-model";
 const logger = require("../config/logger").logger;
 const BCRYPT_SALT_LEN = 9;
 
@@ -474,19 +474,27 @@ userSchema.statics.addUser = (newUser: UserModel, update:boolean, callback: any)
             logger.debug("error in bcrypt salth generation", err)
             throw err;
         }
-        bcrypt.hash(newUser.pass.password, salt, undefined, (err, hash) => {
-            if ( err ) {
-                logger.debug("error in bcrypt hashing", err)
-                throw err;
-            }
-            newUser.pass.password = hash;
-            logger.debug ("bcrypt hash password is " + hash);
+        if(newUser.pass){
+            bcrypt.hash(newUser.pass.password, salt, undefined, (err, hash) => {
+                if ( err ) {
+                    logger.debug("error in bcrypt hashing", err)
+                    throw err;
+                }
+                newUser.pass.password = hash;
+                logger.debug ("bcrypt hash password is " + hash);
+                if(update){
+                    User.findByIdAndUpdate(newUser._id, newUser, {select: "site login sign profile pic programs logs", new: true}, callback)
+                } else {
+                    newUser.save(callback);
+                }
+            });
+        } else {
             if(update){
                 User.findByIdAndUpdate(newUser._id, newUser, {select: "site login sign profile pic programs logs", new: true}, callback)
             } else {
                 newUser.save(callback);
             }
-        });
+        }
     });
 };
 
@@ -504,13 +512,14 @@ const User = mongoose.model< UserModel, IUserModel >("User", userSchema);
 export default User;
 
 export interface EditableSurveyData {
-    survey: SurveyModel;
+    survey: UserSurveyModel;
     surveyResponse?: SurveyResponseModel;
+    filteredAnswers?: any[];
 }
 export interface ProfileAsSurveys {
     _id: string,
     site: string,
-    programs?: any,
+    programs?: EditableSurveyData[],
     logs?: any
     pic?: any,
     intro?: EditableSurveyData,

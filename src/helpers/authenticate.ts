@@ -333,7 +333,7 @@ export let updateProfile = (newUser: UserModel, existingUser: UserModel, overwri
         newUser.login.email_token = emailOTP+"";
     }
     // newUser.login.role = Roles.find((element) => element == "User");
-    logger.debug("new existingUser", overwrite, JSON.stringify(newUser));
+    logger.debug("new existingUser", overwrite, newUser?newUser.toString():newUser);
 
     User.addUser(newUser, true, (err: Error, savedUser: UserModel) => {
         if ( err ) {

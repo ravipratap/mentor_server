@@ -17,7 +17,9 @@ export let populateSignUpForm =  ( preSignup: boolean, existingSite: SiteModel, 
     let surveyId: string;
     let surveyResponse: SurveyResponseModel;
     let is_mentor = false;
+    let role: string;
     let userProgramId: string;
+    let programId: string;
     if(specificSurveyId) surveyId = specificSurveyId;
     if(savedUser.programs && savedUser.programs.length > 0) {
         let fileteredProgramData: any;
@@ -45,8 +47,10 @@ export let populateSignUpForm =  ( preSignup: boolean, existingSite: SiteModel, 
                     surveyId= surveyprogram.survey;
                     let userprogramData= savedUser.programs.find(programData => programData.program.toString() == surveyprogram.program.toString());
                     if(userprogramData) {
-                        is_mentor=userprogramData.is_mentor;
+                        is_mentor = userprogramData.is_mentor;
+                        role = userprogramData.role;
                         userProgramId = (userprogramData as any)._id;
+                        programId = userprogramData.program;
                     }
                 }
                 
@@ -57,7 +61,9 @@ export let populateSignUpForm =  ( preSignup: boolean, existingSite: SiteModel, 
             surveyId = preSignup?fileteredProgramData.signup_pre.survey: fileteredProgramData.signup_post.survey;
             surveyResponse = preSignup?fileteredProgramData.signup_pre: fileteredProgramData.signup_post; 
             is_mentor = fileteredProgramData.is_mentor;
+            role = fileteredProgramData.role;
             userProgramId = fileteredProgramData._id; 
+            programId = fileteredProgramData.program;
         }
         // savedUser.programs.forEach( (programData) => {
         //     if(specificSurveyId) {
@@ -111,11 +117,12 @@ export let populateSignUpForm =  ( preSignup: boolean, existingSite: SiteModel, 
                 let newSurveyResponse:any;
                 let newSurvey:UserSurveyModel; 
                 if(survey) {
-                    newSurveyResponse = populateAnswersForSignUpForm(savedUser, surveyResponse, survey, is_mentor);
+                    newSurveyResponse = populateAnswersForSignUpForm(savedUser, surveyResponse, survey, is_mentor, role);
                     newSurvey= <UserSurveyModel>JSON.parse(JSON.stringify(survey));
                     newSurvey.questions.sort((a, b) => a.order - b.order);
                     if(userProgramId) {
                         newSurvey.userProgramId = userProgramId;
+                        newSurvey.programId = programId;
                         logger.debug("Updated survey userProgramId", newSurvey.userProgramId.toString(), userProgramId.toString());
                     }
                     logger.debug("survey found for response: ", JSON.stringify(newSurvey));
@@ -179,7 +186,7 @@ let sortEducationAndExperience = (savedUser: UserModel) => {
         });
     }
 };
-export let populateAnswersForSignUpForm = (savedUser: UserModel, surveyResponse: SurveyResponseModel, survey: SurveyModel, is_mentor?: boolean, indx?: number) => {
+export let populateAnswersForSignUpForm = (savedUser: UserModel, surveyResponse: SurveyResponseModel, survey: SurveyModel, is_mentor?: boolean, role?: string, indx?: number) => {
     if(surveyResponse) surveyResponse.answers.sort((a, b) => a.order - b.order);
     let newSurveyResponse = surveyResponse?JSON.parse(JSON.stringify(surveyResponse)) : undefined;
     if(!newSurveyResponse){
@@ -351,6 +358,8 @@ export let populateAnswersForSignUpForm = (savedUser: UserModel, surveyResponse:
             newSurveyResponse.answers.push(answer);
         }
     });
+    if(role) newSurveyResponse.role = role;
+    if(is_mentor) newSurveyResponse.is_mentor = is_mentor; 
     return newSurveyResponse;
 };
 export let populateContactFromSignUpForm = (category: string, userFromToken: any, surveyResponse: SurveyResponseModel, savedImage: ImageModel, done: Function) => {
@@ -429,7 +438,7 @@ export let populateContactFromSignUpForm = (category: string, userFromToken: any
         done(undefined, undefined, category, userFromToken, surveyResponse, savedImage)
     }
 };
-export let populateUserFromSignUpForm = (is_mentor:boolean, userProgramId: string, programId: string, contact:any, category: string, userFromToken: any, surveyResponse: SurveyResponseModel, savedImage: ImageModel, done: Function) => {
+export let populateUserFromSignUpForm = (role:string, is_mentor:boolean, userProgramId: string, programId: string, contact:any, category: string, userFromToken: any, surveyResponse: SurveyResponseModel, savedImage: ImageModel, done: Function) => {
     if(surveyResponse) {
         let updateJson: any = {};
         let pushJson: any  = {};
@@ -606,6 +615,7 @@ export let populateUserFromSignUpForm = (is_mentor:boolean, userProgramId: strin
         } else if(userProgramId){
             searchQuery = {_id: userFromToken._id, "programs._id" : userProgramId};
             updateJson["programs.$.is_mentor"] = is_mentor;
+            if(role) updateJson["programs.$.role"] = role;
             if(category == SurveyCategory.find((element) => element == "Signup")){
                 updateJson["programs.$.signup_pre"] = surveyResponse;
             } else {
@@ -621,6 +631,7 @@ export let populateUserFromSignUpForm = (is_mentor:boolean, userProgramId: strin
                     is_mentor: is_mentor
                 }
             };
+            if(role) pushJson.programs.role = role;
             if(category == SurveyCategory.find((element) => element == "Signup")){
                 pushJson.programs.signup_pre = surveyResponse;
             } else {
@@ -658,10 +669,10 @@ export let populateUserFromSignUpForm = (is_mentor:boolean, userProgramId: strin
                         logger.error("error in updating user from form", err);
                         done(err);
                     } else {
-                        if(contact.email && !savedUser.login.email_verified && savedUser.login.email_token && savedUser.login.email_token_expires > new Date()) {                            
+                        if(contact && contact.email && !savedUser.login.email_verified && savedUser.login.email_token && savedUser.login.email_token_expires > new Date()) {                            
                             MailService.sendVerifyMail(savedUser);
                         }
-                        if(contact.mobile && !savedUser.login.mobile_verified && savedUser.login.mobile_otp && savedUser.login.mobile_otp_expires > new Date()) {
+                        if(contact && contact.mobile && !savedUser.login.mobile_verified && savedUser.login.mobile_otp && savedUser.login.mobile_otp_expires > new Date()) {
                             SmsService.sendVerifySms(savedUser);
                         }
                         logger.debug("updated existingUser",userProgramId,  convertUsertoString(savedUser));
@@ -774,13 +785,14 @@ let getProfileFieldsAsSurvey = (user: UserModel, categories: string[], self:bool
         survey.questions.push(question);
     }); 
     survey.questions.sort((a, b) => a.order - b.order);
-    const surveyResponse=populateAnswersForSignUpForm(user, undefined, survey, false, indx);
+    const surveyResponse=populateAnswersForSignUpForm(user, undefined, survey, false, undefined,  indx);
     logger.debug("survey.questions ", survey.questions, "survey response", surveyResponse); 
     return <EditableSurveyData>{ survey: survey, surveyResponse: surveyResponse};
 
 };
 
-export let getProfileAsSurvey = (user: UserModel, self:boolean): ProfileAsSurveys => {
+export let getProfileAsSurvey = (user: UserModel, surveys: SurveyModel[], self:boolean): ProfileAsSurveys => {
+    logger.debug("user for edit", convertUsertoString(user));
     let personal_profile: EditableSurveyData;
     let intro = getProfileFieldsAsSurvey(user, ["Sign", "Current Location"], self, undefined, [true, false]);
     let contact = getProfileFieldsAsSurvey(user, ["Contact"], self, "Update contact", [true]);
@@ -789,7 +801,6 @@ export let getProfileAsSurvey = (user: UserModel, self:boolean): ProfileAsSurvey
         _id: user._id,
         site: user.site,
         pic: user.pic,
-        programs: user.programs, 
         logs: user.logs,
         intro: getProfileFieldsAsSurvey(user, ["Sign", "Current Location"], self, undefined, [true, false]),
     //     positions?:  EditableSurveyData,
@@ -818,5 +829,45 @@ export let getProfileAsSurvey = (user: UserModel, self:boolean): ProfileAsSurvey
         profileAsSurveys.education = getProfileFieldsAsSurvey(user, categories, self, "Update education", mandatory);
     }
     profileAsSurveys.addEducation = getProfileFieldsAsSurvey(user, ["Education"], self, "Update education", [true], user.profile.education.length);
+   
+    profileAsSurveys.programs = [];
+    const profileCategories = [ "Current Location",  "Skills", "ExpInYrs", "Job Level", "Function", "Industry", "Age", "Gender", "Background", "Photo", "Contact", "Position", "Education"];
+    user.programs.forEach(program => {
+        if(program.signup_pre){
+            let newSurvey= surveys.find(element => element._id.equals(program.signup_pre.survey));
+            let nonProfileQuestions =newSurvey ? newSurvey.questions.filter(element => profileCategories.find(elem => elem == element.category) === undefined):undefined;
+            if(newSurvey && nonProfileQuestions && nonProfileQuestions.length > 0) {
+                if(program.role) nonProfileQuestions = nonProfileQuestions.filter(element => element.roles.find(elem => elem == program.role) !== undefined);
+                logger.debug("nonProfileQuestions", program.role, nonProfileQuestions.toString())
+                if(nonProfileQuestions && nonProfileQuestions.length > 0) {
+                    let userSurvey =  <UserSurveyModel>JSON.parse(JSON.stringify(newSurvey));
+                    userSurvey.userProgramId = (program as any)._id;
+                    userSurvey.programId = program.program;
+                    let filteredAnswers = program.signup_pre.answers.filter(element => nonProfileQuestions.find(elem => (elem as any)._id.equals(element.qid)) !== undefined);
+                    logger.debug("userSurvey", userSurvey)
+                    if(program.role) program.signup_pre.role = program.role;
+                    if(program.is_mentor) program.signup_pre.is_mentor = program.is_mentor;
+                    profileAsSurveys.programs.push({survey: userSurvey, surveyResponse: program.signup_pre, filteredAnswers: filteredAnswers});
+                }
+            }
+        }
+        if(program.signup_post){
+            let newSurvey= surveys.find(element => element._id.equals(program.signup_post.survey));
+            let nonProfileQuestions = newSurvey ? newSurvey.questions.filter(element => profileCategories.find(elem => elem == element.category) === undefined): undefined;
+            if(newSurvey && nonProfileQuestions && nonProfileQuestions.length > 0) {
+                if(program.role) nonProfileQuestions = nonProfileQuestions.filter(element => element.roles.find(elem => elem == program.role) !== undefined);
+                if(nonProfileQuestions && nonProfileQuestions.length > 0) {
+                    let userSurvey =  <UserSurveyModel>JSON.parse(JSON.stringify(newSurvey));
+                    userSurvey.userProgramId = (program as any)._id;
+                    userSurvey.programId = program.program;
+                    let filteredAnswers = program.signup_post.answers.filter(element => nonProfileQuestions.find(elem => (elem as any)._id.equals(element.qid)) !== undefined);
+                    if(program.role) program.signup_post.role = program.role;
+                    if(program.is_mentor) program.signup_post.is_mentor = program.is_mentor;
+                    profileAsSurveys.programs.push({survey: userSurvey, surveyResponse: program.signup_post, filteredAnswers: filteredAnswers});
+                }
+            }
+        }
+    });
+
     return profileAsSurveys;
 };

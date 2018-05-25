@@ -19,7 +19,7 @@ import * as MailService from "../helpers/mailService";
 import * as SmsService from "../helpers/smsService";
 import * as AdminServices  from  "../helpers/adminServices";
 import * as SurveyServices  from  "../helpers/surveyServices";
-import { SurveyModel, SurveyCategory } from "../models/survey-model";
+import Survey, { SurveyModel, SurveyCategory } from "../models/survey-model";
 import { JSONunflatten, convertUsertoString } from "../helpers/utilities";
 import passport from "../config/passport";
 
@@ -140,6 +140,7 @@ router.post("/social", (req, res, next) => {
                  action = "rejected";
              } else if(existingUser && existingUser.login.email_verified){
                  action = "decline";
+                 logger.debug("req.body", req.body)
                  if(req.body.login.email_verified) action = "update"
              } else if (existingUser && !existingUser.login.email_verified){
                  action = "overwrite";
@@ -150,7 +151,7 @@ router.post("/social", (req, res, next) => {
                      return res.json({success: false, msg: "Permission to sign in is denied. Please contact support."});
                  }
                  case "decline": {
-                     return res.json({success: false, msg: "User exits with email address. Please sign in with email"});
+                     return res.json({success: false, msg: "User exists with email address. Please sign in with email"});
                  }
                  case "update": { 
                     let newImage:ImageModel
@@ -386,17 +387,19 @@ router.post('/signUpForm', PassportAuth.authenticate(), upload.single('picture')
         const programId = requestBody.extra.program;
         const category =requestBody.extra.category;
         const is_mentor: boolean = requestBody.extra.is_mentor? true: false;
+        const role: string = requestBody.extra.role? requestBody.extra.role: undefined;
         const userProgramId = requestBody.extra.userProgramId;
+        const isNonProfileEdit = requestBody.extra.nonProfileEdit;
         logger.debug("requestBody.extra", requestBody.extra, programId, category, is_mentor, userProgramId);
         delete requestBody.extra;
         let surveyResponse = <SurveyResponseModel> requestBody;
         logger.debug("surveyResponse", surveyResponse);
         logger.debug("/||newImage", newImage, originalName );
-        if(category == SurveyCategory.find((element) => element == "Profile")){
+        if(isNonProfileEdit || category == SurveyCategory.find((element) => element == "Profile")){
             async.waterfall([
                 async.constant(category, req.user, surveyResponse, undefined),
                 SurveyServices.populateContactFromSignUpForm,
-                async.apply(SurveyServices.populateUserFromSignUpForm, is_mentor, userProgramId, programId),
+                async.apply(SurveyServices.populateUserFromSignUpForm, role, is_mentor, userProgramId, programId),
                 SurveyServices.updateEducationFromSignUpForm,
                 SurveyServices.updatePositionFromSignUpForm
             ],  (err, result:any) => {
@@ -436,7 +439,7 @@ router.post('/signUpForm', PassportAuth.authenticate(), upload.single('picture')
                     Authenticate.uploadImage,
                     Authenticate.saveImage,
                     async.apply(SurveyServices.populateContactFromSignUpForm, category, req.user, surveyResponse),
-                    async.apply(SurveyServices.populateUserFromSignUpForm, is_mentor, userProgramId, programId),
+                    async.apply(SurveyServices.populateUserFromSignUpForm, role, is_mentor, userProgramId, programId),
                     SurveyServices.updateEducationFromSignUpForm,
                     SurveyServices.updatePositionFromSignUpForm,
                     async.apply(SurveyServices.populateSignUpForm, category == SurveyCategory.find((element) => element == "Signup"), existingSite, undefined) 
@@ -445,7 +448,7 @@ router.post('/signUpForm', PassportAuth.authenticate(), upload.single('picture')
                     { 
                         res.json({success : false});; 
                     } else {
-                        logger.debug("updateProgram result", convertUsertoString(result));
+                        logger.debug("updateProgram result", result?result.toString():undefined);
                         res.json({
                             success : true,
                             survey: result.survey,
@@ -590,6 +593,8 @@ router.get("/profile",PassportAuth.authenticate(), (req, res, next) => {
     const parsedUrl = url.parse(req.url, true); // true to get query as object
     const params = parsedUrl.query;
     let userId = params._id;
+    let programId = params.program;
+    let surveyId = params.surveyId;
     if(!userId) userId = req.user._id;
     logger.debug("inside profile route", userId);
     logger.debug(req.user);
@@ -611,19 +616,41 @@ router.get("/profile",PassportAuth.authenticate(), (req, res, next) => {
             return res.json({success: false, msg: "User not found"});
         }
         logger.debug(userFromDb?userFromDb.toString():userFromDb);
-        // const userForDisplay = {
-        //     name: userFromDb.fullName,
-        //     email: userFromDb.login.email,
-        //     verified: userFromDb.verified,
-        //     role: userFromDb.login.role,
-        //     mobile: userFromDb.login.mobile,
-        //     email_verified: userFromDb.login.email_verified,
-        //     mobile_verified: userFromDb.login.mobile_verified,
-        //     path: userFromDb.profile.img_path,
-        //     thumbnail: userFromDb.sign.thumbnail,
-        //     img_store: userFromDb.sign.img_store
-        // };
-        res.json({user : SurveyServices.getProfileAsSurvey(userFromDb, self)});
+        if(userFromDb.programs && userFromDb.programs.length > 0){
+            let surveyIds: string[] = [];
+            let searchQuery:any = {}
+            userFromDb.programs.forEach(program => {
+                if(programId){
+                    if(program.program.toString() == programId){
+                        if(program.signup_pre && program.signup_pre.survey) surveyIds.push(program.signup_pre.survey);
+                        if(program.signup_post && program.signup_post.survey) surveyIds.push(program.signup_post.survey);
+                    }
+                } else {
+                    if(program.signup_pre && program.signup_pre.survey) surveyIds.push(program.signup_pre.survey);
+                    if(program.signup_post && program.signup_post.survey) surveyIds.push(program.signup_post.survey);
+                }
+            }); 
+            if(surveyId){
+                surveyId = surveyIds.find(element=> element == surveyId);
+                if(surveyId) searchQuery = {_id: surveyId};
+            } else if (surveyIds.length>0){
+                searchQuery = {_id: {$in: surveyIds}};
+            }
+            if(Object.keys(searchQuery).length !== 0 ){
+                Survey.find(searchQuery, "profile questions", (errata: Error, surveys: SurveyModel[] ) => {
+                    if ( err ){
+                        logger.error("error in retreiving surveys: " , err);
+                        return next(err);
+                    }  
+                    res.json({user : SurveyServices.getProfileAsSurvey(userFromDb, surveys, self)});
+                });
+
+            } else {
+                res.json({user : SurveyServices.getProfileAsSurvey(userFromDb, undefined, self)});
+            }
+        } else {
+            res.json({user : SurveyServices.getProfileAsSurvey(userFromDb, undefined, self)});
+        }
     });
 
 });
